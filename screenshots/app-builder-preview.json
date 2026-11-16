@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Recojo",
+      "hasCanvas": false,
+      "bodyTextLen": 248,
+      "bodyTextHash": "f22a40718aeed0ccd16b3ffc76dd38b6155e94a2e7f5fcd96bb7b93a9b866975",
+      "bodyTextPrefix": "1/1 KFC Alitas ( Restrepo ) QR-Code Calle 18 Sur #19, Bogotá, Co",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Recojo",
+      "hasCanvas": false,
+      "bodyTextLen": 248,
+      "bodyTextHash": "f22a40718aeed0ccd16b3ffc76dd38b6155e94a2e7f5fcd96bb7b93a9b866975",
+      "bodyTextPrefix": "1/1 KFC Alitas ( Restrepo ) QR-Code Calle 18 Sur #19, Bogotá, Co",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
