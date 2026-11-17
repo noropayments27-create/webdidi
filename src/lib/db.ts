@@ -1,4 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { PGlite } from "@electric-sql/pglite";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -46,7 +47,7 @@ export interface Sql {
  */
 const globalRef = globalThis as typeof globalThis & {
   __pgSqlPromise__?: Promise<Sql>;
-  __pgliteInstance__?: Promise<import("@electric-sql/pglite").PGlite>;
+  __pgliteInstance__?: Promise<PGlite>;
   __pgliteMigrateChain__?: Promise<void>;
 };
 
@@ -110,10 +111,8 @@ async function createPgliteSql(): Promise<Sql> {
   // One in-memory instance per process, shared across HMR module instances, so
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
-    const { PGlite } = await import("@electric-sql/pglite");
-    // Nitro's Vercel preset traces PGlite's literal new URL(..., import.meta.url)
-    // assets into the server function. Keep PGlite's native loader so .wasm/.data
-    // files remain binary assets rather than being parsed by Vite as source text.
+    // Keep the import static so Nitro can inspect PGlite and trace its Emscripten
+    // assets (pglite.wasm, initdb.wasm, pglite.data) during the server build.
     const pg = new PGlite({
       parsers: {
         [OID_INT8]: Number,
@@ -202,7 +201,7 @@ export function getSql(): Promise<Sql> {
  * Lets Better Auth persist to the SAME embedded DB as app data in preview (via a
  * Kysely dialect). Throws when `DATABASE_URL` is set (that path uses Neon).
  */
-export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite> {
+export async function getPglite(): Promise<PGlite> {
   if (dbSource !== "pglite") {
     throw new Error("getPglite() is only available on the PGLite fallback (no DATABASE_URL)");
   }
