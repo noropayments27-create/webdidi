@@ -156,6 +156,7 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8081,
     strictPort: true,
   },
+  optimizeDeps: { exclude: ["@electric-sql/pglite"] },
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
