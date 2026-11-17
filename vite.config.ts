@@ -176,6 +176,9 @@ export default defineConfig(({ command, isPreview }) => ({
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.
             serverDir: "./server",
+            // PGlite must be bundled (not externalized) so Nitro can rewrite
+            // its new URL(..., import.meta.url) WASM/data assets into the Vercel function.
+            externals: { inline: ["@electric-sql/pglite"] },
           }),
         ]
       : []),
