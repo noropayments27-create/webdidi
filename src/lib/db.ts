@@ -1,16 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
-// Explicitly bundle PGlite's runtime payload. Nitro's Vercel function tracing
-// does not reliably include Emscripten files discovered through new URL() in
-// a dependency, so load the package exports as bytes and pass them to PGlite.
-// Nitro 3 supports import attributes for binary assets.
- // @ts-expect-error PGlite exports this binary asset for bundlers
-import pgliteWasmBytes from "@electric-sql/pglite/pglite.wasm" with { type: "bytes" };
- // @ts-expect-error PGlite exports this binary asset for bundlers
-import initdbWasmBytes from "@electric-sql/pglite/initdb.wasm" with { type: "bytes" };
- // @ts-expect-error PGlite exports this binary asset for bundlers
-import pgliteDataBytes from "@electric-sql/pglite/pglite.data" with { type: "bytes" };
-
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
@@ -122,14 +111,10 @@ async function createPgliteSql(): Promise<Sql> {
   // data survives source edits (it resets on dev-server restart).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
-    const [pgliteWasmModule, initdbWasmModule] = await Promise.all([
-      WebAssembly.compile(pgliteWasmBytes),
-      WebAssembly.compile(initdbWasmBytes),
-    ]);
+    // Nitro's Vercel preset traces PGlite's literal new URL(..., import.meta.url)
+    // assets into the server function. Keep PGlite's native loader so .wasm/.data
+    // files remain binary assets rather than being parsed by Vite as source text.
     const pg = new PGlite({
-      pgliteWasmModule,
-      initdbWasmModule,
-      fsBundle: new Blob([pgliteDataBytes]),
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,
