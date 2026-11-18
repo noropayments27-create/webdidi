@@ -237,7 +237,7 @@ export async function signOut(redirectTo = "/"): Promise<void> {
 }
 
 
-const TEST_ROLE_KEY = "recojo.test-role";
+const TEST_ROLE_KEY = "didi-repartidor.access-role";
 export type TestRole = "admin" | "user";
 export function setTestRole(role: TestRole): void {
   if (typeof window !== "undefined") window.sessionStorage.setItem(TEST_ROLE_KEY, role);
