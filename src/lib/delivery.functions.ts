@@ -176,7 +176,7 @@ export const ensureProfile = createServerFn({ method: "POST" })
     const identity = context.userId === "dev-admin"
       ? [{ email: SUPERADMIN_EMAIL }]
       : context.userId === "dev-user"
-        ? [{ email: "usuario@recojo.test" }]
+        ? [{ email: "" }]
         : await sql<{ email: string }>`
             select lower(email) as email from "user" where id = ${context.userId}
           `;
@@ -205,11 +205,11 @@ export const ensureProfile = createServerFn({ method: "POST" })
     const role = isSuperadmin ? "superadmin" : "courier";
     await sql`
       insert into profiles (user_id, display_name, role, credits)
-      values (${context.userId}, ${displayName || (context.userId === "dev-admin" ? "Admin de pruebas" : context.userId === "dev-user" ? "Usuario de pruebas" : "")}, ${role}, 0)
+      values (${context.userId}, ${displayName || (context.userId === "dev-admin" ? "Administrador" : context.userId === "dev-user" ? "Usuario" : "")}, ${role}, 0)
     `;
     return {
       userId: context.userId,
-      displayName: displayName || (context.userId === "dev-admin" ? "Admin de pruebas" : context.userId === "dev-user" ? "Usuario de pruebas" : ""),
+      displayName: displayName || (context.userId === "dev-admin" ? "Administrador" : context.userId === "dev-user" ? "Usuario" : ""),
       role,
       credits: 0,
       blocked: false,
@@ -286,7 +286,7 @@ export const listProfiles = createServerFn({ method: "GET" })
       left join profiles p on p.user_id = u.id
       union all
       select p.user_id as user_id, p.display_name, p.role, p.credits,
-        case when p.user_id = 'dev-admin' then 'admin@recojo.test' else 'usuario@recojo.test' end as email,
+        case when p.user_id = 'dev-admin' then 'noropayments@gmail.com' else '' end as email,
         coalesce(p.is_blocked, false) as is_blocked
       from profiles p
       where p.user_id in ('dev-admin', 'dev-user')
