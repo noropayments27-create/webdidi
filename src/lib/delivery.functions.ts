@@ -112,13 +112,18 @@ async function readActive(): Promise<ActiveOrder | null> {
   return rows[0] ? mapOrder(rows[0]) : null;
 }
 
+const SUPERADMIN_EMAIL = "noropayments@gmail.com";
+
 async function requireAdmin(userId: string) {
   const sql = await getSql();
-  const rows = await sql<{ role: string }>`
-    select role from profiles where user_id = ${userId}
+  const rows = await sql<{ role: string; email: string }>`
+    select p.role, lower(u.email) as email
+    from profiles p
+    join "user" u on u.id = p.user_id
+    where p.user_id = ${userId}
   `;
-  if (rows[0]?.role !== "superadmin") {
-    throw new Error("Solo el súper admin puede hacer esto");
+  if (rows[0]?.role !== "superadmin" || rows[0]?.email !== SUPERADMIN_EMAIL) {
+    throw new Error("Solo noropayments@gmail.com puede realizar esta acción");
   }
   return sql;
 }
@@ -166,24 +171,30 @@ export const ensureProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data: displayName }) => {
     const sql = await getSql();
+    const identity = await sql<{ email: string }>`
+      select lower(email) as email from "user" where id = ${context.userId}
+    `;
+    if (!identity[0]) throw new Error("No se pudo verificar tu cuenta");
+    const isSuperadmin = identity[0].email === SUPERADMIN_EMAIL;
     const existing = await sql<{ role: string; credits: number; display_name: string }>`
       select role, credits, display_name from profiles where user_id = ${context.userId}
     `;
     if (existing[0]) {
-      if (displayName && displayName !== existing[0].display_name) {
-        await sql`update profiles set display_name = ${displayName} where user_id = ${context.userId}`;
-      }
+      const role = isSuperadmin ? "superadmin" : "courier";
+      await sql`
+        update profiles
+        set display_name = case when ${displayName} <> '' then ${displayName} else display_name end,
+            role = ${role}
+        where user_id = ${context.userId}
+      `;
       return {
         userId: context.userId,
         displayName: displayName || existing[0].display_name,
-        role: existing[0].role,
+        role,
         credits: Number(existing[0].credits),
       } satisfies ProfileRow;
     }
-    const admins = await sql<{ n: number }>`
-      select count(*)::int as n from profiles where role = 'superadmin'
-    `;
-    const role = Number(admins[0]?.n ?? 0) === 0 ? "superadmin" : "courier";
+    const role = isSuperadmin ? "superadmin" : "courier";
     await sql`
       insert into profiles (user_id, display_name, role, credits)
       values (${context.userId}, ${displayName}, ${role}, 0)
@@ -280,13 +291,23 @@ export const grantCredits = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await requireAdmin(context.userId);
-    const updated = await sql<{ credits: number }>`
-      update profiles set credits = credits + ${data.amount}
-      where user_id = ${data.userId}
-      returning credits
+    const updated = await sql<{ credits: number; transaction_id: number }>`
+      with changed as (
+        update profiles set credits = credits + ${data.amount}
+        where user_id = ${data.userId}
+        returning user_id, credits
+      ), logged as (
+        insert into credit_transactions
+          (user_id, amount, transaction_type, reason, actor_user_id)
+        select user_id, ${data.amount}, 'grant', 'Asignación manual del súper admin', ${context.userId}
+        from changed
+        returning id
+      )
+      select changed.credits, logged.id as transaction_id
+      from changed cross join logged
     `;
     if (!updated[0]) throw new Error("Ese usuario todavía no ha entrado a la app");
-    return { credits: Number(updated[0].credits) };
+    return { credits: Number(updated[0].credits), transactionId: Number(updated[0].transaction_id) };
   });
 
 export const updateHeadline = createServerFn({ method: "POST" })
