@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { MapPin, Store as StoreIcon, ArrowRight, History, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { ensureProfile, listStores, createOuting, type ProfileRow, type StoreRow } from "@/lib/delivery.functions";
@@ -36,7 +36,7 @@ function Home() {
       .finally(() => setLoaded(true));
   }, [user, isPending]);
 
-  async function submitOuting(event: React.FormEvent<HTMLFormElement>) {
+  async function submitOuting(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected || busy) return;
     setBusy(true);
