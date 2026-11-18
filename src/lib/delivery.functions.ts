@@ -194,6 +194,13 @@ export const ensureProfile = createServerFn({ method: "POST" })
             role = ${role}
         where user_id = ${context.userId}
       `;
+      if (context.userId === "dev-admin") {
+        await sql`
+          insert into profiles (user_id, display_name, role, credits)
+          values ('dev-user', 'Usuario', 'courier', 0)
+          on conflict (user_id) do nothing
+        `;
+      }
       return {
         userId: context.userId,
         displayName: displayName || existing[0].display_name,
@@ -293,8 +300,8 @@ export const listProfiles = createServerFn({ method: "GET" })
       left join profiles p on p.user_id = u.id
       union all
       select p.user_id as user_id, p.display_name, p.role, p.credits,
-        case when p.user_id = 'dev-admin' then 'noropayments@gmail.com' else '' end as email,
-        coalesce(p.is_blocked, false) as is_blocked
+        coalesce(p.is_blocked, false) as is_blocked,
+        case when p.user_id = 'dev-admin' then 'noropayments@gmail.com' else '' end as email
       from profiles p
       where p.user_id in ('dev-admin', 'dev-user')
       order by display_name asc
