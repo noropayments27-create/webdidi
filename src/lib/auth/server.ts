@@ -106,7 +106,7 @@ const LOCAL_DEV_ORIGINS: string[] = [
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  allowedHosts: [...previewAllowedHosts, "*.vercel.app", "webdidi-five.vercel.app", "localhost", "127.0.0.1", "[::1]"],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
@@ -126,6 +126,7 @@ const trustedOrigins: string[] = explicitBaseURL
       ...previewAllowedHosts,
       ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
       ...APP_DEPLOYMENT_ORIGINS,
+      "https://*.vercel.app",
       ...LOCAL_DEV_ORIGINS,
     ];
 
