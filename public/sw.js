@@ -1,10 +1,10 @@
-const CACHE_VERSION = "recojo-pwa-v1";
+const CACHE_VERSION = "didi-repartidor-pwa-v1";
 const SHELL = CACHE_VERSION + "-shell";
 const STATIC = CACHE_VERSION + "-static";
 const OFFLINE = "/offline.html";
 const CORE = [OFFLINE, "/icon-192.png", "/icon-512.png", "/__grok/icon-180.png", "/favicon.svg"];
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(SHELL).then((cache) => cache.addAll(CORE))); self.skipWaiting(); });
-self.addEventListener("activate", (event) => { event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("recojo-pwa-") && key !== SHELL && key !== STATIC).map((key) => caches.delete(key))))); self.clients.claim(); });
+self.addEventListener("activate", (event) => { event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key.startsWith("didi-repartidor-pwa-") && key !== SHELL && key !== STATIC).map((key) => caches.delete(key))))); self.clients.claim(); });
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
