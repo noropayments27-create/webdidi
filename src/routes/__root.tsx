@@ -4,7 +4,7 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Recojo";
+const APP_NAME = "Didi repartidor";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Recojo de pedidos en tienda. Súper admin, créditos y locales.",
+        content: "Gestión de tiendas y registro de salidas para repartidores. Súper admin, créditos y locales.",
       },
       { name: "theme-color", content: "#FD650F" },
     ],
