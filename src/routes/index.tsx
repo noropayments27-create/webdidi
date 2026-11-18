@@ -18,7 +18,7 @@ function Home() {
   const [notes, setNotes] = useState("");
   const [doublet, setDoublet] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [loaded, setLoaded] = useState(false);\n  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     if (isPending) return;
@@ -53,7 +53,7 @@ function Home() {
     } finally { setBusy(false); }
   }
 
-  if (isPending || !loaded) return <main className="mx-auto min-h-dvh max-w-md bg-card p-6"><div className="h-8 w-40 animate-pulse rounded-full bg-paper" /><div className="mt-6 h-24 animate-pulse rounded-3xl bg-paper" /></main>;
+  if (isPending || !loaded || (!user && !demoMode)) return <main className="mx-auto min-h-dvh max-w-md bg-card p-6"><div className="h-8 w-40 animate-pulse rounded-full bg-paper" /><div className="mt-6 h-24 animate-pulse rounded-3xl bg-paper" /></main>;
 
   if (!user) return <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center bg-card px-6"><h1 className="text-3xl font-extrabold">Recojo</h1><p className="mt-2 text-muted">Inicia sesión para ver las tiendas y registrar tus salidas.</p><Link to="/login" className="mt-6 flex h-12 items-center justify-center rounded-full bg-primary font-bold text-primary-fg">Iniciar sesión</Link></main>;
 
@@ -61,10 +61,10 @@ function Home() {
     <main className="mx-auto min-h-dvh w-full max-w-md bg-card px-5 pt-5 pb-12">
       <header className="flex items-center justify-between gap-3">
         <div><p className="text-sm font-semibold text-muted">Panel de trabajo</p><h1 className="text-2xl font-extrabold tracking-tight">Tiendas</h1></div>
-        <UserButton />
+        {user ? <UserButton /> : <Link to="/login" className="text-sm font-bold text-primary">Iniciar sesión</Link>}
       </header>
-      <section className="mt-5 flex items-center justify-between rounded-3xl bg-paper p-4">
-        <div><p className="text-xs font-semibold uppercase tracking-wide text-muted">Tu saldo</p><p className="mt-1 text-2xl font-extrabold">{formatCredits(profile?.credits ?? 0)} <span className="text-sm font-semibold">créditos</span></p></div>
+      {demoMode ? <p className="mt-4 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm font-semibold text-orange-800">Modo demostración · No se guardan salidas ni se consumen créditos.</p> : null}\n      <section className="mt-5 flex items-center justify-between rounded-3xl bg-paper p-4">
+        <div><p className="text-xs font-semibold uppercase tracking-wide text-muted">Tu saldo</p><p className="mt-1 text-2xl font-extrabold">{demoMode ? "Demo" : formatCredits(profile?.credits ?? 0)} <span className="text-sm font-semibold">{demoMode ? "sin saldo real" : "créditos"}</span></p></div>
         <Wallet className="size-7 text-primary" />
       </section>
       {profile?.role === "superadmin" ? (
@@ -94,8 +94,8 @@ function Home() {
           <textarea maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalles de esta salida" rows={3} className="mt-2 w-full rounded-2xl bg-paper p-4 outline-none"/>
           <label className="mt-4 flex items-center gap-3 rounded-2xl bg-paper p-3"><input type="checkbox" checked={doublet} onChange={(e) => setDoublet(e.target.checked)} className="size-5 accent-orange-500"/><span className="flex-1"><span className="block font-bold">Salida doblete</span><span className="text-xs text-muted">Consume 2 créditos</span></span><span className="font-extrabold">{doublet ? "2" : "1"} crédito(s)</span></label>
           <p className="mt-3 text-xs text-muted">Al confirmar se descontará el crédito correspondiente y quedará registrada la salida.</p>
-          <button disabled={busy || !profile || profile.credits < (doublet ? 2 : 1)} type="submit" className="mt-5 h-13 w-full rounded-full bg-primary py-3 font-extrabold text-primary-fg disabled:opacity-50">{busy ? "Registrando..." : "Confirmar salida"}</button>
-          {profile && profile.credits < (doublet ? 2 : 1) ? <p className="mt-2 text-center text-sm font-semibold text-red-600">No tienes créditos suficientes.</p> : null}
+          <button disabled={busy || (!demoMode && (!profile || profile.credits < (doublet ? 2 : 1)))} type="submit" className="mt-5 h-13 w-full rounded-full bg-primary py-3 font-extrabold text-primary-fg disabled:opacity-50">{busy ? "Registrando..." : demoMode ? "Probar salida (demo)" : "Confirmar salida"}</button>
+          {!demoMode && profile && profile.credits < (doublet ? 2 : 1) ? <p className="mt-2 text-center text-sm font-semibold text-red-600">No tienes créditos suficientes.</p> : null}
         </form>
       </div> : null}
     </main>
