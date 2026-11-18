@@ -58,11 +58,25 @@ const DEV_STATE: CurrentUserState = { user: DEV_USER, isPending: false };
  * call keeps a stable hook order across every render of a given component.
  */
 export function useCurrentUserState(): CurrentUserState {
-  if (!authEnabled) return DEV_STATE;
+  const testRole = getTestRole();
+  if (!authEnabled) return testRole ? testUserState(testRole) : DEV_STATE;
   // eslint-disable-next-line react-hooks/rules-of-hooks -- authEnabled is constant for the app's lifetime
-  return useSessionUserState();
+  const sessionState = useSessionUserState();
+  return testRole ? testUserState(testRole) : sessionState;
 }
 
+function testUserState(role: "admin" | "user"): CurrentUserState {
+  return {
+    user: {
+      id: role === "admin" ? "dev-admin" : "dev-user",
+      displayName: role === "admin" ? "Admin de pruebas" : "Usuario de pruebas",
+      primaryEmail: role === "admin" ? "admin@recojo.test" : "usuario@recojo.test",
+      profileImageUrl: null,
+      isDevFallback: true,
+    },
+    isPending: false,
+  };
+}
 function useSessionUserState(): CurrentUserState {
   const { data, isPending } = authClient.useSession();
   const id = data?.user.id;
