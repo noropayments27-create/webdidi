@@ -38,6 +38,7 @@ export type ProfileRow = {
   displayName: string;
   role: string;
   credits: number;
+  blocked?: boolean;
 };
 
 type OrderSqlRow = {
@@ -177,10 +178,11 @@ export const ensureProfile = createServerFn({ method: "POST" })
     `;
     if (!identity[0]) throw new Error("No se pudo verificar tu cuenta");
     const isSuperadmin = identity[0].email === SUPERADMIN_EMAIL;
-    const existing = await sql<{ role: string; credits: number; display_name: string }>`
-      select role, credits, display_name from profiles where user_id = ${context.userId}
+    const existing = await sql<{ role: string; credits: number; display_name: string; is_blocked: boolean }>`
+      select role, credits, display_name, is_blocked from profiles where user_id = ${context.userId}
     `;
     if (existing[0]) {
+      if (existing[0].is_blocked && !isSuperadmin) throw new Error("Tu cuenta está bloqueada. Contacta al administrador.");
       const role = isSuperadmin ? "superadmin" : "courier";
       await sql`
         update profiles
@@ -193,6 +195,7 @@ export const ensureProfile = createServerFn({ method: "POST" })
         displayName: displayName || existing[0].display_name,
         role,
         credits: Number(existing[0].credits),
+        blocked: existing[0].is_blocked,
       } satisfies ProfileRow;
     }
     const role = isSuperadmin ? "superadmin" : "courier";
@@ -205,6 +208,7 @@ export const ensureProfile = createServerFn({ method: "POST" })
       displayName,
       role,
       credits: 0,
+      blocked: false,
     } satisfies ProfileRow;
   });
 
@@ -266,11 +270,13 @@ export const listProfiles = createServerFn({ method: "GET" })
       role: string;
       credits: number;
       email: string;
+      is_blocked: boolean;
     }>`
       select u.id as user_id,
         coalesce(p.display_name, u.name, '') as display_name,
         coalesce(p.role, case when lower(u.email) = ${SUPERADMIN_EMAIL} then 'superadmin' else 'courier' end) as role,
         coalesce(p.credits, 0) as credits,
+        coalesce(p.is_blocked, false) as is_blocked,
         u.email
       from "user" u
       left join profiles p on p.user_id = u.id
@@ -283,8 +289,29 @@ export const listProfiles = createServerFn({ method: "GET" })
         displayName: row.display_name,
         role: row.role,
         credits: Number(row.credits),
+        blocked: row.is_blocked,
       }),
     );
+  });
+
+export const setUserBlocked = createServerFn({ method: "POST" })
+  .validator((input: { userId: string; blocked: boolean }) => {
+    const userId = String(input?.userId ?? "").trim();
+    if (!userId || typeof input?.blocked !== "boolean") throw new Error("Solicitud inválida");
+    return { userId, blocked: input.blocked };
+  })
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    const sql = await requireAdmin(context.userId);
+    if (data.userId === context.userId) throw new Error("No puedes bloquear tu propia cuenta");
+    const rows = await sql<{ id: string }>`
+      update profiles set is_blocked = ${data.blocked}
+      where user_id = ${data.userId}
+        and user_id in (select id from "user" where lower(email) <> ${SUPERADMIN_EMAIL})
+      returning user_id as id
+    `;
+    if (!rows[0]) throw new Error("No se encontró el usuario o no se puede bloquear");
+    return { userId: data.userId, blocked: data.blocked };
   });
 
 export const grantCredits = createServerFn({ method: "POST" })
@@ -387,6 +414,8 @@ export const createOuting = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const active = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!active[0] || active[0].is_blocked) throw new Error("Tu cuenta está bloqueada o no está habilitada.");
     const rows = await sql<{ id: number; credits: number }>`
       with store_ok as (
         select id from stores where id = ${data.storeId}
