@@ -314,6 +314,13 @@ export const setUserBlocked = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await requireAdmin(context.userId);
     if (data.userId === context.userId) throw new Error("No puedes bloquear tu propia cuenta");
+    await sql`
+      insert into profiles (user_id, display_name, role, credits)
+      select id, coalesce(name, ''), 'courier', 0
+      from "user"
+      where id = ${data.userId} and lower(email) <> ${SUPERADMIN_EMAIL}
+      on conflict (user_id) do nothing
+    `;
     const rows = await sql<{ id: string }>`
       update profiles set is_blocked = ${data.blocked}
       where user_id = ${data.userId}
