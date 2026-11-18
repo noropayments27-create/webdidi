@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { authClient, authEnabled } from "./client";
+import { authClient, authEnabled, getTestRole } from "./client";
 
 /** Normalized user shape used across the app, auth on or off. */
 export type AppUser = {
