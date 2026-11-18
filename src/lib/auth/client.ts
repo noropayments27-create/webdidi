@@ -230,6 +230,7 @@ export async function signOut(redirectTo = "/"): Promise<void> {
     },
     clearToken: () => setBearerToken(null),
     redirect: () => {
+      clearTestRole();
       window.location.href = redirectTo;
     },
   });
