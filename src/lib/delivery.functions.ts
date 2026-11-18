@@ -209,7 +209,6 @@ export const ensureProfile = createServerFn({ method: "POST" })
   });
 
 export const listStores = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
   .handler(async () => {
     const sql = await getSql();
     const rows = await sql<{
