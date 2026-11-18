@@ -174,7 +174,7 @@ function Admin() {
                   assignPickupStore({ data: store.id })
                     .then((next) => {
                       setOrder(next);
-                      toast.success("Esa tienda quedó en el recojo");
+                      toast.success("Esa tienda quedó seleccionada");
                     })
                     .catch((error: unknown) =>
                       toast.error(error instanceof Error ? error.message : "No se pudo cambiar"),
@@ -182,7 +182,7 @@ function Admin() {
                 }
                 className="mt-2 text-sm font-bold text-primary"
               >
-                {order?.storeId === store.id ? "En pantalla" : "Usar en el recojo"}
+                {order?.storeId === store.id ? "En pantalla" : "Seleccionar tienda"}
               </button>
             </li>
           ))}
