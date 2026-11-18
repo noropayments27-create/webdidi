@@ -115,13 +115,17 @@ const baseURL = explicitBaseURL ?? {
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
+const APP_DEPLOYMENT_ORIGINS = [
+  "https://webdidi-five.vercel.app",
+  "https://webdidi-noropayments.vercel.app",
+  "https://webdidi-git-main-noropayments.vercel.app",
+];
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
+  ? [explicitBaseURL, ...APP_DEPLOYMENT_ORIGINS, ...LOCAL_DEV_ORIGINS]
   : [
-      // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
-      // Full-origin wildcards (matched against Origin)
       ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+      ...APP_DEPLOYMENT_ORIGINS,
       ...LOCAL_DEV_ORIGINS,
     ];
 
