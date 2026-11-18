@@ -275,7 +275,7 @@ export const listProfiles = createServerFn({ method: "GET" })
         u.email
       from "user" u
       left join profiles p on p.user_id = u.id
-      order by u.created_at asc
+      order by u."createdAt" asc
     `;
     return rows.map(
       (row): ProfileRow => ({
