@@ -69,7 +69,7 @@ function testUserState(role: "admin" | "user"): CurrentUserState {
   return {
     user: {
       id: role === "admin" ? "dev-admin" : "dev-user",
-      displayName: role === "admin" ? "Admin de pruebas" : "Usuario de pruebas",
+      displayName: role === "admin" ? "Administrador" : "Usuario",
       primaryEmail: role === "admin" ? "admin@recojo.test" : "usuario@recojo.test",
       profileImageUrl: null,
       isDevFallback: true,
