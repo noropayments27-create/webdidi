@@ -246,3 +246,7 @@ export function getTestRole(): TestRole | null {
   const role = window.sessionStorage.getItem(TEST_ROLE_KEY);
   return role === "admin" || role === "user" ? role : null;
 }
+
+export function clearTestRole(): void {
+  if (typeof window !== "undefined") window.sessionStorage.removeItem(TEST_ROLE_KEY);
+}
