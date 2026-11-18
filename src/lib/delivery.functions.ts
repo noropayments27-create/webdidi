@@ -284,7 +284,13 @@ export const listProfiles = createServerFn({ method: "GET" })
         u.email
       from "user" u
       left join profiles p on p.user_id = u.id
-      order by u."createdAt" asc
+      union all
+      select p.user_id as user_id, p.display_name, p.role, p.credits,
+        case when p.user_id = 'dev-admin' then 'admin@recojo.test' else 'usuario@recojo.test' end as email,
+        coalesce(p.is_blocked, false) as is_blocked
+      from profiles p
+      where p.user_id in ('dev-admin', 'dev-user')
+      order by display_name asc
     `;
     return rows.map(
       (row): ProfileRow => ({
@@ -311,7 +317,7 @@ export const setUserBlocked = createServerFn({ method: "POST" })
     const rows = await sql<{ id: string }>`
       update profiles set is_blocked = ${data.blocked}
       where user_id = ${data.userId}
-        and user_id in (select id from "user" where lower(email) <> ${SUPERADMIN_EMAIL})
+        and (user_id = 'dev-user' or user_id in (select id from "user" where lower(email) <> ${SUPERADMIN_EMAIL}))
       returning user_id as id
     `;
     if (!rows[0]) throw new Error("No se encontró el usuario o no se puede bloquear");
