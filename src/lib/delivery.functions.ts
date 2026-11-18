@@ -210,7 +210,7 @@ export const ensureProfile = createServerFn({ method: "POST" })
 
 export const listStores = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
+  .handler(async () => {
     const sql = await getSql();
     const rows = await sql<{
       id: number;
@@ -389,9 +389,7 @@ export const createOuting = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const rows = await sql<{ id: number; credits: number }>`
-      with eligible as (
-        select user_id from profiles where user_id = ${context.userId}
-      ), store_ok as (
+      with store_ok as (
         select id from stores where id = ${data.storeId}
       ), charged as (
         update profiles set credits = credits - ${data.cost}
