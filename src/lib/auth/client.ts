@@ -234,3 +234,15 @@ export async function signOut(redirectTo = "/"): Promise<void> {
     },
   });
 }
+
+
+const TEST_ROLE_KEY = "recojo.test-role";
+export type TestRole = "admin" | "user";
+export function setTestRole(role: TestRole): void {
+  if (typeof window !== "undefined") window.sessionStorage.setItem(TEST_ROLE_KEY, role);
+}
+export function getTestRole(): TestRole | null {
+  if (typeof window === "undefined") return null;
+  const role = window.sessionStorage.getItem(TEST_ROLE_KEY);
+  return role === "admin" || role === "user" ? role : null;
+}
