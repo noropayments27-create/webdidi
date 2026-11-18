@@ -26,7 +26,6 @@ function Login() {
   }
 
   const googleProvider = GROK_PROVIDERS.find((provider) => provider.idp === "google");
-  const otherProviders = GROK_PROVIDERS.filter((provider) => provider.idp !== "google");
 
   return (
     <main className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-[#151519] px-4 py-10 sm:px-6">
@@ -81,32 +80,6 @@ function Login() {
                     ? "Conectando..."
                     : "Continuar con Google"}
                 </button>
-              ) : null}
-
-              {otherProviders.length > 0 ? (
-                <>
-                  <div className="flex items-center gap-3 py-1">
-                    <span className="h-px flex-1 bg-[#dedee3]" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#9999a1]">
-                      O también
-                    </span>
-                    <span className="h-px flex-1 bg-[#dedee3]" />
-                  </div>
-                  {otherProviders.map((provider) => (
-                    <button
-                      key={provider.providerId}
-                      type="button"
-                      onClick={() => void handleSignIn(provider.providerId)}
-                      disabled={pendingProvider !== null}
-                      className="flex h-[50px] w-full items-center justify-center gap-3 rounded-[17px] border border-[#dedee3] bg-white px-5 text-[15px] font-extrabold text-[#17171a] transition hover:border-[#c5c5cc] hover:bg-[#fafafa] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff650f] disabled:cursor-wait disabled:opacity-65"
-                    >
-                      <span className="text-xl font-black" aria-hidden="true">𝕏</span>
-                      {pendingProvider === provider.providerId
-                        ? "Conectando..."
-                        : `Continuar con ${provider.label}`}
-                    </button>
-                  ))}
-                </>
               ) : null}
 
               {errorMessage ? (
