@@ -43,6 +43,7 @@ export const authMiddleware = createMiddleware({ type: "function" })
     const { requireUserId } = await import("./verify.server");
     // Reject scripted cross-site/sibling requests before touching per-user data.
     assertSameSiteRequest();
-    const testRole = (context as { testRole?: string }).testRole;\n    const userId = testRole === "admin" ? "dev-admin" : testRole === "user" ? "dev-user" : await requireUserId(context.bearerToken);
+    const testRole = (context as { testRole?: string }).testRole;
+    const userId = testRole === "admin" ? "dev-admin" : testRole === "user" ? "dev-user" : await requireUserId(context.bearerToken);
     return next({ context: { userId } });
   });
