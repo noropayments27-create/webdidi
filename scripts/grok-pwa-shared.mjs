@@ -157,8 +157,9 @@ export function renderInstallPageHtml(template, { host, url } = {}) {
     .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)));
 }
 
-export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
+export function renderWebManifest(hostHeader, fallbackName = DEFAULT_APP_NAME) {
+  const hostName = appNameFromHost(hostHeader);
+  const name = hostName === DEFAULT_APP_NAME ? String(fallbackName || DEFAULT_APP_NAME) : hostName;
   return JSON.stringify(
     {
       name,
@@ -170,11 +171,9 @@ export function renderWebManifest(hostHeader) {
       background_color: "#000000",
       theme_color: "#000000",
       icons: [
-        {
-          src: "/__grok/icon-180.png",
-          sizes: "180x180",
-          type: "image/png",
-        },
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+        { src: "/__grok/icon-180.png", sizes: "180x180", type: "image/png" },
       ],
     },
     null,
@@ -196,7 +195,8 @@ export function grokPwaHeadTags(appName = DEFAULT_APP_NAME) {
       "apple-mobile-web-app-status-bar-style",
       '<meta name="apple-mobile-web-app-status-bar-style" content="black">',
     ],
-    ["theme-color", '<meta name="theme-color" content="#000000">'],
+    ["theme-color", '<meta name="theme-color" content="#FD650F">'],
+    ["service-worker", '<script src="/register-sw.js" defer></script>'],
   ];
 }
 
@@ -452,6 +452,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
       if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      if (key === "service-worker") return !next.includes('src="/register-sw.js"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);
