@@ -34,7 +34,7 @@ function Login() {
       </header>
       <div className="rounded-[28px] border border-white/60 bg-[#f4f4f7] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.38)] sm:p-7">
         <h2 className="text-xl font-extrabold text-[#17171a]">Iniciar sesión</h2>
-        <p className="mt-1 text-sm text-[#777780]">Accede a Recojo.</p>
+        <p className="mt-1 text-sm text-[#777780]">Accede a Didi repartidor.</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button type="button" onClick={() => enterTest("admin")} className="h-[52px] rounded-[17px] bg-[#ff650f] px-3 text-[15px] font-extrabold text-white shadow-[0_7px_18px_rgba(255,101,15,0.22)] transition hover:bg-[#ed5908]">Admin</button>
           <button type="button" onClick={() => enterTest("user")} className="h-[52px] rounded-[17px] border-2 border-[#ff650f] bg-white px-3 text-[15px] font-extrabold text-[#e95508] transition hover:bg-orange-50">Usuarios</button>
@@ -44,7 +44,7 @@ function Login() {
           {pending === "google" ? "Conectando..." : "Continuar con Google"}
         </button> : null}
         {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p> : null}
-        <p className="mt-4 text-center text-xs text-[#85858d]">Admin y Usuarios son accesos directos de prueba sin autenticación.</p>
+        <p className="mt-4 text-center text-xs text-[#85858d]"></p>
       </div>
     </section>
   </main>;
