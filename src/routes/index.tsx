@@ -41,7 +41,7 @@ function Home() {
   }, [isPending]);
 
   useEffect(() => {
-    if (!isPending && !user && !demoMode) window.location.replace("/login");
+    if (!isPending && !user && !demoMode && new URLSearchParams(window.location.search).get("demo") !== "1") window.location.replace("/login");
   }, [user, isPending, demoMode]);
 
   async function submitOuting(event: FormEvent<HTMLFormElement>) {
