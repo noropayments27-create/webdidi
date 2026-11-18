@@ -34,6 +34,7 @@ export type StoreRow = {
 
 export type ProfileRow = {
   userId: string;
+  email?: string;
   displayName: string;
   role: string;
   credits: number;
@@ -210,7 +211,6 @@ export const ensureProfile = createServerFn({ method: "POST" })
 export const listStores = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    await requireAdmin(context.userId);
     const sql = await getSql();
     const rows = await sql<{
       id: number;
@@ -266,12 +266,15 @@ export const listProfiles = createServerFn({ method: "GET" })
       display_name: string;
       role: string;
       credits: number;
+      email: string;
     }>`
-      select user_id, display_name, role, credits from profiles order by created_at asc
+      select p.user_id, p.display_name, p.role, p.credits, u.email
+      from profiles p left join "user" u on u.id = p.user_id order by p.created_at asc
     `;
     return rows.map(
       (row): ProfileRow => ({
         userId: row.user_id,
+        email: row.email ?? "",
         displayName: row.display_name,
         role: row.role,
         credits: Number(row.credits),
@@ -346,4 +349,88 @@ export const assignPickupStore = createServerFn({ method: "POST" })
     const order = await readActive();
     if (!order) throw new Error("No hay pedido");
     return order;
+  });
+
+
+export type OutingRow = {
+  id: number;
+  storeName: string;
+  userName: string;
+  userEmail: string;
+  destination: string;
+  notes: string;
+  creditsUsed: number;
+  createdAt: string;
+};
+
+export const createOuting = createServerFn({ method: "POST" })
+  .validator((input: { storeId: number; destination: string; notes?: string; doublet?: boolean }) => {
+    const storeId = Math.trunc(Number(input?.storeId));
+    const destination = String(input?.destination ?? "").trim().slice(0, 180);
+    const notes = String(input?.notes ?? "").trim().slice(0, 500);
+    const doublet = input?.doublet === true;
+    if (!Number.isInteger(storeId) || storeId <= 0 || destination.length < 3) {
+      throw new Error("Selecciona una tienda e indica el destino");
+    }
+    return { storeId, destination, notes, doublet, cost: doublet ? 2 : 1 };
+  })
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const rows = await sql<{ id: number; credits: number }>`
+      with eligible as (
+        select user_id from profiles where user_id = ${context.userId}
+      ), store_ok as (
+        select id from stores where id = ${data.storeId}
+      ), charged as (
+        update profiles set credits = credits - ${data.cost}
+        where user_id = ${context.userId} and credits >= ${data.cost}
+          and exists (select 1 from store_ok)
+        returning user_id, credits
+      ), outing as (
+        insert into outings (user_id, store_id, destination, notes, credits_used)
+        select user_id, ${data.storeId}, ${data.destination}, ${data.notes}, ${data.cost}
+        from charged
+        returning id, user_id
+      ), ledger as (
+        insert into credit_transactions (user_id, amount, transaction_type, reason, reference_type, reference_id, actor_user_id)
+        select user_id, -${data.cost}, 'spend', 'Salida registrada', 'outing', id::text, user_id
+        from outing
+        returning id
+      )
+      select outing.id, charged.credits
+      from outing join charged on charged.user_id = outing.user_id
+      cross join ledger
+    `;
+    if (!rows[0]) {
+      const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
+      if (!profile[0]) throw new Error("No se encontró tu perfil");
+      if (Number(profile[0].credits) < data.cost) throw new Error("No tienes créditos suficientes");
+      throw new Error("No se pudo registrar la salida. Verifica la tienda seleccionada.");
+    }
+    return { id: Number(rows[0].id), credits: Number(rows[0].credits) };
+  });
+
+export const listOutings = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await requireAdmin(context.userId);
+    const rows = await sql<{
+      id: number; store_name: string; display_name: string; email: string;
+      destination: string; notes: string; credits_used: number; created_at: string;
+    }>`
+      select o.id, s.name as store_name, p.display_name, u.email,
+        o.destination, o.notes, o.credits_used, o.created_at::text
+      from outings o
+      join stores s on s.id = o.store_id
+      join profiles p on p.user_id = o.user_id
+      left join "user" u on u.id = o.user_id
+      order by o.created_at desc
+      limit 500
+    `;
+    return rows.map((r): OutingRow => ({
+      id: Number(r.id), storeName: r.store_name, userName: r.display_name,
+      userEmail: r.email ?? "", destination: r.destination, notes: r.notes,
+      creditsUsed: Number(r.credits_used), createdAt: r.created_at,
+    }));
   });
