@@ -130,7 +130,7 @@ function Admin() {
         Tiendas, el texto del recuadro y los créditos de cada cuenta.
       </p>
 
-      <section className="mt-6 rounded-3xl border border-line p-4">
+      <nav className="mt-5 grid grid-cols-2 gap-2">\n        <Link to="/admin/users" className="flex h-11 items-center justify-center rounded-2xl border border-line text-sm font-bold">Usuarios</Link>\n        <Link to="/admin/history" className="flex h-11 items-center justify-center rounded-2xl border border-line text-sm font-bold">Historial de salidas</Link>\n      </nav>\n\n      <section className="mt-4 rounded-3xl border border-line p-4">
         <h2 className="font-extrabold">Texto del recuadro</h2>
         <p className="mt-1 text-sm text-muted">Hoy dice “{order?.headline ?? "…"}”.</p>
         <form
