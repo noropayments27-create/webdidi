@@ -14,7 +14,7 @@ function Login() {
     setErrorMessage(null);
 
     try {
-      await signIn(providerId, { callbackURL: "/admin", errorCallbackURL: "/login" });
+      await signIn(providerId, { callbackURL: "/", errorCallbackURL: "/login" });
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -97,6 +97,13 @@ function Login() {
               El inicio de sesión está desactivado por el momento.
             </p>
           )}
+
+          <div className="mt-5">
+            <Link to="/?demo=1" className="flex min-h-[52px] w-full items-center justify-center rounded-[17px] border-2 border-[#ff650f] bg-white px-5 text-[15px] font-extrabold text-[#ff650f] transition hover:bg-orange-50">
+              Entrar sin cuenta
+            </Link>
+            <p className="mt-2 text-center text-xs leading-5 text-[#85858d]">Modo demostración: podrás explorar sin registrar salidas ni gastar créditos.</p>
+          </div>
 
           <div className="mt-6 border-t border-[#dedee3] pt-5">
             <Link
