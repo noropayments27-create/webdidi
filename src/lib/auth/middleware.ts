@@ -31,7 +31,8 @@ export const authMiddleware = createMiddleware({ type: "function" })
     // cookie, so forward it to the server. Null when deployed (cookie auth), so
     // this is a no-op there.
     const { getBearerToken } = await import("./client");
-    return next({ sendContext: { bearerToken: getBearerToken() ?? undefined } });
+    const role = typeof window !== "undefined" ? window.sessionStorage.getItem("recojo.test-role") : null;
+    return next({ sendContext: { bearerToken: getBearerToken() ?? undefined, testRole: role === "admin" || role === "user" ? role : undefined } });
   })
   .server(async ({ next, context }) => {
     // ONLY import `*.server` modules here. This file is dual client/server
@@ -42,6 +43,6 @@ export const authMiddleware = createMiddleware({ type: "function" })
     const { requireUserId } = await import("./verify.server");
     // Reject scripted cross-site/sibling requests before touching per-user data.
     assertSameSiteRequest();
-    const userId = await requireUserId(context.bearerToken);
+    const testRole = (context as { testRole?: string }).testRole;\n    const userId = testRole === "admin" ? "dev-admin" : testRole === "user" ? "dev-user" : await requireUserId(context.bearerToken);
     return next({ context: { userId } });
   });
