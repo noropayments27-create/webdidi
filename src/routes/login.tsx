@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { setTestRole, GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
+import { setTestRole, clearTestRole, GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
 
 export const Route = createFileRoute("/login")({ component: Login });
 
@@ -16,6 +16,7 @@ function Login() {
 
   async function googleSignIn() {
     if (!google || pending) return;
+    clearTestRole();
     setPending("google"); setError(null);
     try { await signIn(google.providerId, { callbackURL: "/", errorCallbackURL: "/login" }); }
     catch (e) { setError(e instanceof Error ? e.message : "No se pudo iniciar sesión"); setPending(null); }
