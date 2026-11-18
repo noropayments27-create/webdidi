@@ -268,8 +268,14 @@ export const listProfiles = createServerFn({ method: "GET" })
       credits: number;
       email: string;
     }>`
-      select p.user_id, p.display_name, p.role, p.credits, u.email
-      from profiles p left join "user" u on u.id = p.user_id order by p.created_at asc
+      select u.id as user_id,
+        coalesce(p.display_name, u.name, '') as display_name,
+        coalesce(p.role, case when lower(u.email) = ${SUPERADMIN_EMAIL} then 'superadmin' else 'courier' end) as role,
+        coalesce(p.credits, 0) as credits,
+        u.email
+      from "user" u
+      left join profiles p on p.user_id = u.id
+      order by u.created_at asc
     `;
     return rows.map(
       (row): ProfileRow => ({
@@ -294,6 +300,11 @@ export const grantCredits = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await requireAdmin(context.userId);
+    await sql`
+      insert into profiles (user_id, display_name, role, credits)
+      select id, coalesce(name, ''), 'courier', 0 from "user" where id = ${data.userId}
+      on conflict (user_id) do nothing
+    `;
     const updated = await sql<{ credits: number; transaction_id: number }>`
       with changed as (
         update profiles set credits = credits + ${data.amount}
