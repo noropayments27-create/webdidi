@@ -207,6 +207,13 @@ export const ensureProfile = createServerFn({ method: "POST" })
       insert into profiles (user_id, display_name, role, credits)
       values (${context.userId}, ${displayName || (context.userId === "dev-admin" ? "Administrador" : context.userId === "dev-user" ? "Usuario" : "")}, ${role}, 0)
     `;
+    if (context.userId === "dev-admin") {
+      await sql`
+        insert into profiles (user_id, display_name, role, credits)
+        values ('dev-user', 'Usuario', 'courier', 0)
+        on conflict (user_id) do nothing
+      `;
+    }
     return {
       userId: context.userId,
       displayName: displayName || (context.userId === "dev-admin" ? "Administrador" : context.userId === "dev-user" ? "Usuario" : ""),
@@ -346,6 +353,12 @@ export const grantCredits = createServerFn({ method: "POST" })
     await sql`
       insert into profiles (user_id, display_name, role, credits)
       select id, coalesce(name, ''), 'courier', 0 from "user" where id = ${data.userId}
+      on conflict (user_id) do nothing
+    `;
+    await sql`
+      insert into profiles (user_id, display_name, role, credits)
+      select 'dev-user', 'Usuario', 'courier', 0
+      where ${data.userId} = 'dev-user'
       on conflict (user_id) do nothing
     `;
     const updated = await sql<{ credits: number; transaction_id: number }>`
