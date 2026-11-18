@@ -31,7 +31,7 @@ export const authMiddleware = createMiddleware({ type: "function" })
     // cookie, so forward it to the server. Null when deployed (cookie auth), so
     // this is a no-op there.
     const { getBearerToken } = await import("./client");
-    const role = typeof window !== "undefined" ? window.sessionStorage.getItem("recojo.test-role") : null;
+    const role = typeof window !== "undefined" ? window.sessionStorage.getItem("didi-repartidor.access-role") : null;
     return next({ sendContext: { bearerToken: getBearerToken() ?? undefined, testRole: role === "admin" || role === "user" ? role : undefined } });
   })
   .server(async ({ next, context }) => {
