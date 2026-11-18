@@ -9,7 +9,7 @@ function Login() {
   const [error, setError] = useState<string | null>(null);
   const google = GROK_PROVIDERS.find((provider) => provider.idp === "google");
 
-  function enterTest(role: "admin" | "user") {
+  function enterAsRole(role: "admin" | "user") {
     setTestRole(role);
     window.location.href = role === "admin" ? "/admin/users" : "/";
   }
@@ -36,15 +36,14 @@ function Login() {
         <h2 className="text-xl font-extrabold text-[#17171a]">Iniciar sesión</h2>
         <p className="mt-1 text-sm text-[#777780]">Accede a Didi repartidor.</p>
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <button type="button" onClick={() => enterTest("admin")} className="h-[52px] rounded-[17px] bg-[#ff650f] px-3 text-[15px] font-extrabold text-white shadow-[0_7px_18px_rgba(255,101,15,0.22)] transition hover:bg-[#ed5908]">Admin</button>
-          <button type="button" onClick={() => enterTest("user")} className="h-[52px] rounded-[17px] border-2 border-[#ff650f] bg-white px-3 text-[15px] font-extrabold text-[#e95508] transition hover:bg-orange-50">Usuarios</button>
+          <button type="button" onClick={() => enterAsRole("admin")} className="h-[52px] rounded-[17px] bg-[#ff650f] px-3 text-[15px] font-extrabold text-white shadow-[0_7px_18px_rgba(255,101,15,0.22)] transition hover:bg-[#ed5908]">Admin</button>
+          <button type="button" onClick={() => enterAsRole("user")} className="h-[52px] rounded-[17px] border-2 border-[#ff650f] bg-white px-3 text-[15px] font-extrabold text-[#e95508] transition hover:bg-orange-50">Usuarios</button>
         </div>
         {authEnabled && google ? <button type="button" onClick={() => void googleSignIn()} disabled={pending !== null} className="mt-4 flex h-[52px] w-full items-center justify-center gap-3 rounded-[17px] border border-[#dedee3] bg-white px-5 text-[15px] font-extrabold text-[#202027] disabled:opacity-60">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4285f4] text-[15px] font-black text-white">G</span>
           {pending === "google" ? "Conectando..." : "Continuar con Google"}
         </button> : null}
         {error ? <p role="alert" className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p> : null}
-        <p className="mt-4 text-center text-xs text-[#85858d]"></p>
       </div>
     </section>
   </main>;
