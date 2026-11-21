@@ -207,17 +207,23 @@ export const setOrderStatus = createServerFn({ method: "POST" })
 
 export const rateStore = createServerFn({ method: "POST" })
   .validator((input: { id: number; rating: string }) => {
-    const id = Number(input?.id);
+    const id = Math.trunc(Number(input?.id));
     const rating = input?.rating === "no" ? "no" : "yes";
-    if (!Number.isFinite(id)) throw new Error("Pedido inválido");
+    if (!Number.isInteger(id) || id <= 0) throw new Error("Pedido inválido");
     return { id, rating };
   })
-  .handler(async ({ data }) => {
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await sql`update orders set rating = ${data.rating} where id = ${data.id}`;
-    const order = await readActive();
-    if (!order) throw new Error("Pedido no encontrado");
-    return order;
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const changed = await sql<{ id: number }>`
+      update orders set rating = ${data.rating} where id = ${data.id} returning id
+    `;
+    if (!changed[0]) throw new Error("Pedido no encontrado");
+    const rows = await sql.query<OrderSqlRow>(`${ORDER_SELECT} where o.id = $1 limit 1`, [data.id]);
+    if (!rows[0]) throw new Error("Pedido no encontrado");
+    return mapOrder(rows[0]);
   });
 
 export const ensureProfile = createServerFn({ method: "POST" })
