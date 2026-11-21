@@ -495,34 +495,33 @@ export const createOuting = createServerFn({ method: "POST" })
     const rows = await sql<{ id: number; credits: number; was_duplicate: boolean }>`
       with profile_lock as materialized (
         select user_id, credits from profiles where user_id = ${context.userId} for update
-      ), existing as materialized (
-        select id from outings where user_id = ${context.userId} and request_key = ${data.requestKey} limit 1
-      ), charged as (
-        update profiles set credits = credits - ${data.cost}
-        where user_id = ${context.userId} and credits >= ${data.cost}
-          and exists (select 1 from profile_lock)
-          and not exists (select 1 from existing)
-          and exists (select 1 from stores where id = ${data.storeId})
-        returning user_id, credits
       ), outing as (
         insert into outings (user_id, store_id, destination, notes, credits_used, request_key)
         select user_id, ${data.storeId}, ${data.destination}, ${data.notes}, ${data.cost}, ${data.requestKey}
-        from charged
+        from profile_lock
+        where credits >= ${data.cost}
+          and exists (select 1 from stores where id = ${data.storeId})
         on conflict (user_id, request_key) do nothing
         returning id, user_id
+      ), charged as (
+        update profiles set credits = credits - ${data.cost}
+        where user_id = ${context.userId} and exists (select 1 from outing)
+        returning user_id, credits
       ), ledger as (
         insert into credit_transactions (user_id, amount, transaction_type, reason, reference_type, reference_id, actor_user_id)
         select user_id, -${data.cost}, 'spend', 'Salida registrada', 'outing', id::text, user_id
         from outing returning id
+      ), existing as (
+        select id from outings where user_id = ${context.userId} and request_key = ${data.requestKey} limit 1
       )
       select coalesce(outing.id, existing.id) as id,
         profiles.credits,
-        (existing.id is not null) as was_duplicate
+        (outing.id is null) as was_duplicate
       from profiles
-      left join existing on true
       left join outing on true
+      left join existing on outing.id is null
       where profiles.user_id = ${context.userId}
-        and (existing.id is not null or outing.id is not null)
+        and (outing.id is not null or existing.id is not null)
     `;
     if (!rows[0]) {
       const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
