@@ -93,7 +93,12 @@ export function PickupScreen({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [exitDone, setExitDone] = useState(false);\n  const [editing, setEditing] = useState(false);\n  const [savingPresentation, setSavingPresentation] = useState(false);\n  const [headlineDraft, setHeadlineDraft] = useState(order.headline);\n  const [statusDraft, setStatusDraft] = useState(order.statusMessage);\n  const [qrVisible, setQrVisible] = useState(order.qrVisible);
+  const [exitDone, setExitDone] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savingPresentation, setSavingPresentation] = useState(false);
+  const [headlineDraft, setHeadlineDraft] = useState(order.headline);
+  const [statusDraft, setStatusDraft] = useState(order.statusMessage);
+  const [qrVisible, setQrVisible] = useState(order.qrVisible);
   const photoInput = useRef<HTMLInputElement>(null);
   const requestKey = useRef<string | null>(null);
   const address = [order.address, order.city].filter(Boolean).join(", ");
@@ -181,8 +186,10 @@ export function PickupScreen({
 
   return <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-card sm:shadow-xl">
     <div className="relative h-[23dvh] min-h-[150px] max-h-[250px] shrink-0">
-      {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}\n      <button type="button" aria-label={editing ? "Cambiar fotografía de la tienda" : "Ver fotografía de la tienda"} onClick={() => editing ? photoInput.current?.click() : setSheet("photo")} className="absolute inset-0 z-[1] w-full" />\n      {editing && <span className="pointer-events-none absolute right-3 bottom-6 z-[2] inline-flex items-center gap-1 rounded-full bg-ink/80 px-3 py-2 text-xs font-bold text-white"><ImagePlus className="size-4" /> Toca para cambiar la foto</span>}
-      <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
+      {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
+      <button type="button" aria-label={editing ? "Cambiar fotografía de la tienda" : "Ver fotografía de la tienda"} onClick={() => editing ? photoInput.current?.click() : setSheet("photo")} className="absolute inset-0 z-[1] w-full" />
+      {editing && <span className="pointer-events-none absolute right-3 bottom-6 z-[2] inline-flex items-center gap-1 rounded-full bg-ink/80 px-3 py-2 text-xs font-bold text-white"><ImagePlus className="size-4" /> Toca para cambiar la foto</span>}
+      <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute z-10 top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
       <button type="button" onClick={() => setSheet("photo")} className="absolute right-3 bottom-6 inline-flex items-center gap-1 rounded-full bg-ink/80 py-1.5 pr-2 pl-3 text-sm font-semibold text-primary-fg">1/1 <ChevronRight className="size-4" /></button>
     </div>
 
@@ -190,7 +197,8 @@ export function PickupScreen({
       <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line" />
       <header className="mt-3 flex shrink-0 items-start gap-2 max-[720px]:mt-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><h1 className="text-[19px] font-extrabold tracking-tight">{order.storeName}</h1>{qrVisible && <button type="button" disabled={editing} onClick={() => setSheet("qr")} className="rounded-full bg-badge px-2.5 py-1 text-xs font-bold text-primary-fg">QR-Code</button>}</div>\n          {editing && <button type="button" onClick={() => setQrVisible((visible) => !visible)} className="mt-2 inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-ink">{qrVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}{qrVisible ? "Ocultar QR" : "Mostrar QR"}</button>}
+          <div className="flex flex-wrap items-center gap-2"><h1 className="text-[19px] font-extrabold tracking-tight">{order.storeName}</h1>{qrVisible && <button type="button" disabled={editing} onClick={() => setSheet("qr")} className="rounded-full bg-badge px-2.5 py-1 text-xs font-bold text-primary-fg">QR-Code</button>}</div>
+          {editing && <button type="button" onClick={() => setQrVisible((visible) => !visible)} className="mt-2 inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-ink">{qrVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}{qrVisible ? "Ocultar QR" : "Mostrar QR"}</button>}
           <p className="mt-1 text-sm leading-snug text-muted">{address}</p>
         </div>
         <div className="flex shrink-0 gap-2">
