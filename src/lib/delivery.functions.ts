@@ -102,7 +102,8 @@ function mapOrder(row: OrderSqlRow): ActiveOrder {
 
 const ORDER_SELECT = `
   select
-    o.id, o.code, o.status, coalesce(s.pickup_headline, o.headline) as headline,\n    coalesce(s.pickup_status_message, o.status_message) as status_message, s.show_qr_code, o.items_json,
+    o.id, o.code, o.status, coalesce(s.pickup_headline, o.headline) as headline,
+    coalesce(s.pickup_status_message, o.status_message) as status_message, s.show_qr_code, o.items_json,
     o.total_cop, o.customer_name, o.note, o.rating, o.store_id,
     s.name as store_name, s.address, s.city, s.phone, s.photo_url
   from orders o
