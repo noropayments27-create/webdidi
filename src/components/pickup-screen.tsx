@@ -128,7 +128,6 @@ export function PickupScreen({
   async function toggleEditor() {
     if (!editing) {
       setPhotoDraft(null);
-      setPhotoDraft(null);
       setHeadlineDraft(order.headline);
       setStatusDraft(order.statusMessage);
       setQrVisible(order.qrVisible);
