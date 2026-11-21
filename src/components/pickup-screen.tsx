@@ -128,6 +128,7 @@ export function PickupScreen({
   async function toggleEditor() {
     if (!editing) {
       setPhotoDraft(null);
+      setPhotoDraft(null);
       setHeadlineDraft(order.headline);
       setStatusDraft(order.statusMessage);
       setQrVisible(order.qrVisible);
@@ -142,8 +143,10 @@ export function PickupScreen({
         headline: headlineDraft,
         statusMessage: statusDraft,
         qrVisible,
+        photoDataUrl: photoDraft ?? undefined,
       } });
-      onOrder({ ...order, ...saved });
+      onOrder({ ...order, ...saved, photoUrl: saved.photoUrl || order.photoUrl });
+      setPhotoDraft(null);
       setEditing(false);
       toast.success("Cambios de la tienda guardados");
     } catch (error) {
@@ -167,9 +170,8 @@ export function PickupScreen({
         reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
         reader.readAsDataURL(file);
       });
-      await updateStorePhoto({ data: { storeId: order.storeId, photoDataUrl } });
-      onOrder({ ...order, photoUrl: photoDataUrl });
-      toast.success("Fotografía de la tienda actualizada");
+      setPhotoDraft(photoDataUrl);
+      toast.success("Fotografía lista. Pulsa guardar para aplicar los cambios.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo actualizar la fotografía");
     } finally {
@@ -232,7 +234,7 @@ export function PickupScreen({
         <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void changePhoto(event.target.files?.[0])} />
         <ExitSlider disabled={!canExit || photoBusy} loading={busy} onComplete={completeExit} />
       </div>
-      {(photoBusy || savingPresentation) && <span className="pb-1 text-center text-xs text-muted">{photoBusy ? "Actualizando fotografía…" : "Guardando cambios…"}</span>}
+      {(photoBusy || savingPresentation) && <span className="pb-1 text-center text-xs text-muted">{photoBusy ? "Preparando fotografía…" : "Guardando cambios…"}</span>}
     </div>
 
     {sheet === "details" && <Overlay title="Detalles del pedido" onClose={() => setSheet(null)}>
