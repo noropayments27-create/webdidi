@@ -563,7 +563,7 @@ export const createOuting = createServerFn({ method: "POST" })
         on conflict do nothing
         returning id, user_id, order_id
       ), charged as (
-        update profiles set credits = credits - ${data.cost}
+        update profiles set credits = credits - ${data.cost}::integer
         where user_id = ${context.userId} and exists (select 1 from outing)
         returning user_id, credits
       ), completed as (
@@ -572,7 +572,7 @@ export const createOuting = createServerFn({ method: "POST" })
         returning id
       ), ledger as (
         insert into credit_transactions (user_id, amount, transaction_type, reason, reference_type, reference_id, actor_user_id)
-        select user_id, -${data.cost}, 'spend', 'Salida registrada', 'outing', id::text, user_id
+        select user_id, (0::integer - ${data.cost}::integer), 'spend', 'Salida registrada', 'outing', id::text, user_id
         from outing returning id
       ), existing as (
         select id from outings
