@@ -1,10 +1,10 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import {
-  ChevronDown, ChevronRight, ChevronsRight, Phone, Scan, SlidersHorizontal,
+  Check, ChevronDown, ChevronRight, ChevronsRight, Eye, EyeOff, ImagePlus, Phone, Scan, SlidersHorizontal,
   ThumbsDown, ThumbsUp, TriangleAlert, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createOuting, rateStore, setOrderStatus, updateStorePhoto, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
+import { createOuting, rateStore, setOrderStatus, updateStorePhoto, updateStorePresentation, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
 import { formatCop, telHref } from "@/lib/format";
 
 type Sheet = "details" | "help" | "qr" | "photo" | null;
@@ -93,7 +93,7 @@ export function PickupScreen({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
-  const [exitDone, setExitDone] = useState(false);
+  const [exitDone, setExitDone] = useState(false);\n  const [editing, setEditing] = useState(false);\n  const [savingPresentation, setSavingPresentation] = useState(false);\n  const [headlineDraft, setHeadlineDraft] = useState(order.headline);\n  const [statusDraft, setStatusDraft] = useState(order.statusMessage);\n  const [qrVisible, setQrVisible] = useState(order.qrVisible);
   const photoInput = useRef<HTMLInputElement>(null);
   const requestKey = useRef<string | null>(null);
   const address = [order.address, order.city].filter(Boolean).join(", ");
@@ -116,6 +116,33 @@ export function PickupScreen({
       throw error;
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleEditor() {
+    if (!editing) {
+      setHeadlineDraft(order.headline);
+      setStatusDraft(order.statusMessage);
+      setQrVisible(order.qrVisible);
+      setEditing(true);
+      return;
+    }
+    if (savingPresentation) return;
+    setSavingPresentation(true);
+    try {
+      const saved = await updateStorePresentation({ data: {
+        storeId: order.storeId,
+        headline: headlineDraft,
+        statusMessage: statusDraft,
+        qrVisible,
+      } });
+      onOrder({ ...order, ...saved });
+      setEditing(false);
+      toast.success("Cambios de la tienda guardados");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudieron guardar los cambios");
+    } finally {
+      setSavingPresentation(false);
     }
   }
 
@@ -154,7 +181,7 @@ export function PickupScreen({
 
   return <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-card sm:shadow-xl">
     <div className="relative h-[23dvh] min-h-[150px] max-h-[250px] shrink-0">
-      {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
+      {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}\n      <button type="button" aria-label={editing ? "Cambiar fotografía de la tienda" : "Ver fotografía de la tienda"} onClick={() => editing ? photoInput.current?.click() : setSheet("photo")} className="absolute inset-0 z-[1] w-full" />\n      {editing && <span className="pointer-events-none absolute right-3 bottom-6 z-[2] inline-flex items-center gap-1 rounded-full bg-ink/80 px-3 py-2 text-xs font-bold text-white"><ImagePlus className="size-4" /> Toca para cambiar la foto</span>}
       <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
       <button type="button" onClick={() => setSheet("photo")} className="absolute right-3 bottom-6 inline-flex items-center gap-1 rounded-full bg-ink/80 py-1.5 pr-2 pl-3 text-sm font-semibold text-primary-fg">1/1 <ChevronRight className="size-4" /></button>
     </div>
@@ -163,19 +190,19 @@ export function PickupScreen({
       <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line" />
       <header className="mt-3 flex shrink-0 items-start gap-2 max-[720px]:mt-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><h1 className="text-[19px] font-extrabold tracking-tight">{order.storeName}</h1><button type="button" onClick={() => setSheet("qr")} className="rounded-full bg-badge px-2.5 py-1 text-xs font-bold text-primary-fg">QR-Code</button></div>
+          <div className="flex flex-wrap items-center gap-2"><h1 className="text-[19px] font-extrabold tracking-tight">{order.storeName}</h1>{qrVisible && <button type="button" disabled={editing} onClick={() => setSheet("qr")} className="rounded-full bg-badge px-2.5 py-1 text-xs font-bold text-primary-fg">QR-Code</button>}</div>\n          {editing && <button type="button" onClick={() => setQrVisible((visible) => !visible)} className="mt-2 inline-flex items-center gap-1 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-ink">{qrVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}{qrVisible ? "Ocultar QR" : "Mostrar QR"}</button>}
           <p className="mt-1 text-sm leading-snug text-muted">{address}</p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button type="button" aria-label="Ver código QR" onClick={() => setSheet("qr")} className="grid size-11 place-items-center rounded-full bg-paper"><Scan className="size-6" strokeWidth={1.75} /></button>
+          {qrVisible && <button type="button" aria-label="Ver código QR" disabled={editing} onClick={() => setSheet("qr")} className="grid size-11 place-items-center rounded-full bg-paper disabled:opacity-40"><Scan className="size-6" strokeWidth={1.75} /></button>}
           {phone && <a href={phone} aria-label={`Llamar a la tienda ${order.phone}`} className="grid size-11 place-items-center rounded-full bg-paper text-ink"><Phone className="size-6" strokeWidth={1.75} /></a>}
         </div>
       </header>
 
-      <p className="mt-3 shrink-0 rounded-2xl bg-paper px-4 py-3 text-[15px] leading-snug font-semibold max-[720px]:mt-2 max-[720px]:py-2.5">{order.statusMessage}</p>
+      {editing ? <input aria-label="Texto de estado de la tienda" maxLength={180} value={statusDraft} onChange={(event) => setStatusDraft(event.target.value)} className="mt-3 w-full shrink-0 rounded-2xl border border-primary bg-paper px-4 py-3 text-[15px] font-semibold outline-none max-[720px]:mt-2 max-[720px]:py-2.5" /> : <p className="mt-3 shrink-0 rounded-2xl bg-paper px-4 py-3 text-[15px] leading-snug font-semibold max-[720px]:mt-2 max-[720px]:py-2.5">{order.statusMessage}</p>}
 
       <section className="mt-3 shrink-0 rounded-3xl border border-line px-4 pt-4 pb-3 max-[720px]:mt-2 max-[720px]:pt-3 max-[720px]:pb-2">
-        <h2 className="text-[26px] font-extrabold tracking-tight">{order.headline}</h2>
+        {editing ? <input aria-label="Texto del recuadro principal" maxLength={80} value={headlineDraft} onChange={(event) => setHeadlineDraft(event.target.value)} className="w-full rounded-xl border border-primary bg-paper px-3 py-2 text-[24px] font-extrabold tracking-tight outline-none" /> : <h2 className="text-[26px] font-extrabold tracking-tight">{order.headline}</h2>}
         <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then((next) => onOrder({ ...next, statusMessage: "Ya tienes el pedido. Llévalo con cuidado." })).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full max-[720px]:mt-3 max-[720px]:h-12 bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">{order.status === "picked" || order.status === "exited" ? "Ya tienes el pedido" : "Tengo el pedido"}</button>
         <button type="button" onClick={() => setSheet("details")} className="mt-2 w-full py-1 text-center text-sm font-medium text-muted">Detalles del pedido ›</button>
       </section>
@@ -191,11 +218,11 @@ export function PickupScreen({
       </section>
 
       <div className="mt-auto flex shrink-0 items-center gap-3 pt-3 pb-3 max-[720px]:pt-2 max-[720px]:pb-2">
-        <button type="button" aria-label="Editar fotografía de la tienda" onClick={() => photoInput.current?.click()} className="grid size-12 shrink-0 place-items-center"><SlidersHorizontal className="size-7" strokeWidth={2.1} /></button>
+        <button type="button" aria-label={editing ? "Guardar cambios de la tienda" : "Editar pantalla de la tienda"} disabled={savingPresentation} onClick={() => void toggleEditor()} className="grid size-12 shrink-0 place-items-center disabled:opacity-50">{editing ? <Check className="size-7" strokeWidth={2.5} /> : <SlidersHorizontal className="size-7" strokeWidth={2.1} />}</button>
         <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void changePhoto(event.target.files?.[0])} />
         <ExitSlider disabled={!canExit || photoBusy} loading={busy} onComplete={completeExit} />
       </div>
-      {photoBusy && <span className="pb-1 text-center text-xs text-muted">Actualizando fotografía…</span>}
+      {(photoBusy || savingPresentation) && <span className="pb-1 text-center text-xs text-muted">{photoBusy ? "Actualizando fotografía…" : "Guardando cambios…"}</span>}
     </div>
 
     {sheet === "details" && <Overlay title="Detalles del pedido" onClose={() => setSheet(null)}>
