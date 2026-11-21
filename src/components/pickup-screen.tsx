@@ -176,7 +176,7 @@ export function PickupScreen({
 
       <section className="mt-3 shrink-0 rounded-3xl border border-line px-4 pt-4 pb-3">
         <h2 className="text-[26px] font-extrabold tracking-tight">{order.headline}</h2>
-        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then(onOrder).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">{order.status === "picked" || order.status === "exited" ? "Ya tienes el pedido" : "Tengo el pedido"}</button>
+        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then((next) => onOrder({ ...next, statusMessage: "Ya tienes el pedido. Llévalo con cuidado." })).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">{order.status === "picked" || order.status === "exited" ? "Ya tienes el pedido" : "Tengo el pedido"}</button>
         <button type="button" onClick={() => setSheet("details")} className="mt-2 w-full py-1 text-center text-sm font-medium text-muted">Detalles del pedido ›</button>
       </section>
 
