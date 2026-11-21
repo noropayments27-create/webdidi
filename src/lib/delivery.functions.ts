@@ -21,6 +21,7 @@ export type ActiveOrder = {
   city: string;
   phone: string;
   photoUrl: string;
+  qrVisible: boolean;
 };
 
 export type StoreRow = {
@@ -58,6 +59,7 @@ type OrderSqlRow = {
   city: string;
   phone: string;
   photo_url: string;
+  show_qr_code: boolean;
 };
 
 function parseItems(raw: string): OrderItem[] {
@@ -94,12 +96,13 @@ function mapOrder(row: OrderSqlRow): ActiveOrder {
     city: row.city,
     phone: row.phone,
     photoUrl: row.photo_url,
+    qrVisible: row.show_qr_code !== false,
   };
 }
 
 const ORDER_SELECT = `
   select
-    o.id, o.code, o.status, o.headline, o.status_message, o.items_json,
+    o.id, o.code, o.status, coalesce(s.pickup_headline, o.headline) as headline,\n    coalesce(s.pickup_status_message, o.status_message) as status_message, s.show_qr_code, o.items_json,
     o.total_cop, o.customer_name, o.note, o.rating, o.store_id,
     s.name as store_name, s.address, s.city, s.phone, s.photo_url
   from orders o
@@ -150,6 +153,34 @@ export const getOrderForStore = createServerFn({ method: "GET" })
       [storeId],
     );
     return rows[0] ? mapOrder(rows[0]) : null;
+  });
+
+export const updateStorePresentation = createServerFn({ method: "POST" })
+  .validator((input: { storeId: number; headline: string; statusMessage: string; qrVisible: boolean }) => {
+    const storeId = Math.trunc(Number(input?.storeId));
+    const headline = String(input?.headline ?? "").trim().slice(0, 80);
+    const statusMessage = String(input?.statusMessage ?? "").trim().slice(0, 180);
+    const qrVisible = input?.qrVisible === true;
+    if (!Number.isInteger(storeId) || storeId <= 0 || !headline || !statusMessage) {
+      throw new Error("Completa los textos antes de guardar");
+    }
+    return { storeId, headline, statusMessage, qrVisible };
+  })
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const rows = await sql<{ id: number }>`
+      update stores
+      set pickup_headline = ${data.headline},
+          pickup_status_message = ${data.statusMessage},
+          show_qr_code = ${data.qrVisible}
+      where id = ${data.storeId}
+      returning id
+    `;
+    if (!rows[0]) throw new Error("No se encontró la tienda");
+    return { headline: data.headline, statusMessage: data.statusMessage, qrVisible: data.qrVisible };
   });
 
 export const updateStorePhoto = createServerFn({ method: "POST" })
