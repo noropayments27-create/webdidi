@@ -66,7 +66,7 @@ function Home() {
       onOrder={setSelectedOrder}
       profile={profile}
       onCredits={(credits) => setProfile((current) => current ? { ...current, credits } : current)}
-      onBack={() => setSelectedOrder(null)}
+      onBack={() => {\n        setStores((current) => current.map((store) => store.id === selectedOrder.storeId ? { ...store, photoUrl: selectedOrder.photoUrl } : store));\n        setSelectedOrder(null);\n      }}
     />;
   }
 
