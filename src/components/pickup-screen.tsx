@@ -106,6 +106,9 @@ export function PickupScreen({
     try {
       const result = await createOuting({ data: { storeId: order.storeId, requestKey: requestKey.current } });
       onCredits(result.credits);
+      requestKey.current = null;
+      setExitDone(true);
+      onOrder({ ...order, status: "exited", statusMessage: "Salida registrada. Continúa con la entrega." });
       toast.success("Salida registrada. Se descontó 1 crédito.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo registrar la salida");
@@ -129,7 +132,6 @@ export function PickupScreen({
         reader.onerror = () => reject(new Error("No se pudo leer la imagen"));
         reader.readAsDataURL(file);
       });
-      const { updateStorePhoto } = await import("@/lib/delivery.functions");
       await updateStorePhoto({ data: { storeId: order.storeId, photoDataUrl } });
       onOrder({ ...order, photoUrl: photoDataUrl });
       toast.success("Fotografía de la tienda actualizada");
