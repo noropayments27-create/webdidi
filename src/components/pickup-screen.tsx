@@ -92,7 +92,8 @@ export function PickupScreen({
 }) {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState(false);\n  const [exitDone, setExitDone] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [exitDone, setExitDone] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const requestKey = useRef<string | null>(null);
   const address = [order.address, order.city].filter(Boolean).join(", ");
