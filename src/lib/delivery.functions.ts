@@ -153,9 +153,8 @@ export const updateStorePhoto = createServerFn({ method: "POST" })
   .validator((input: { storeId: number; photoDataUrl: string }) => {
     const storeId = Math.trunc(Number(input?.storeId));
     const photoDataUrl = String(input?.photoDataUrl ?? "");
-    if (!Number.isInteger(storeId) || storeId <= 0 ||
-      !/^data:image\\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photoDataUrl) ||
-      photoDataUrl.length > 2_800_000) {
+    const validImage = ["data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,"].some((prefix) => photoDataUrl.startsWith(prefix));
+    if (!Number.isInteger(storeId) || storeId <= 0 || !validImage || photoDataUrl.length > 2_800_000) {
       throw new Error("La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB");
     }
     return { storeId, photoDataUrl };
