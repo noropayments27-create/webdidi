@@ -176,19 +176,31 @@ const STATUSES = new Set(["ready", "picked", "delivered", "exited"]);
 
 export const setOrderStatus = createServerFn({ method: "POST" })
   .validator((input: { id: number; status: string }) => {
-    const id = Number(input?.id);
+    const id = Math.trunc(Number(input?.id));
     const status = String(input?.status ?? "");
-    if (!Number.isFinite(id) || !STATUSES.has(status)) {
+    if (!Number.isInteger(id) || id <= 0 || !STATUSES.has(status)) {
       throw new Error("No se pudo actualizar el pedido");
     }
     return { id, status };
   })
-  .handler(async ({ data }) => {
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await sql`update orders set status = ${data.status} where id = ${data.id}`;
-    const order = await readActive();
-    if (!order) throw new Error("Pedido no encontrado");
-    return order;
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const allowed = data.status === "picked" ? "ready"
+      : data.status === "delivered" ? "picked"
+      : data.status === "ready" ? "exited" : null;
+    if (!allowed) throw new Error("Transición de pedido no permitida");
+    const changed = await sql<{ id: number }>`
+      update orders set status = ${data.status}
+      where id = ${data.id} and status = ${allowed}
+      returning id
+    `;
+    if (!changed[0]) throw new Error("El pedido ya cambió de estado. Actualiza la pantalla.");
+    const rows = await sql.query<OrderSqlRow>(`${ORDER_SELECT} where o.id = $1 limit 1`, [data.id]);
+    if (!rows[0]) throw new Error("Pedido no encontrado");
+    return mapOrder(rows[0]);
   });
 
 export const rateStore = createServerFn({ method: "POST" })
