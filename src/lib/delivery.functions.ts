@@ -487,16 +487,17 @@ export type OutingRow = {
 };
 
 export const createOuting = createServerFn({ method: "POST" })
-  .validator((input: { storeId: number; destination?: string; notes?: string; doublet?: boolean; requestKey: string }) => {
+  .validator((input: { storeId: number; orderId: number; destination?: string; notes?: string; doublet?: boolean; requestKey: string }) => {
     const storeId = Math.trunc(Number(input?.storeId));
+    const orderId = Math.trunc(Number(input?.orderId));
     const destination = String(input?.destination ?? "Entrega asignada").trim().slice(0, 180);
     const notes = String(input?.notes ?? "").trim().slice(0, 500);
     const doublet = input?.doublet === true;
     const requestKey = String(input?.requestKey ?? "").trim().slice(0, 80);
-    if (!Number.isInteger(storeId) || storeId <= 0 || requestKey.length < 12) {
+    if (!Number.isInteger(storeId) || storeId <= 0 || !Number.isInteger(orderId) || orderId <= 0 || requestKey.length < 12) {
       throw new Error("No se pudo validar la salida");
     }
-    return { storeId, destination, notes, doublet, requestKey, cost: doublet ? 2 : 1 };
+    return { storeId, orderId, destination, notes, doublet, requestKey, cost: doublet ? 2 : 1 };
   })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
@@ -506,24 +507,34 @@ export const createOuting = createServerFn({ method: "POST" })
     const rows = await sql<{ id: number; credits: number; was_duplicate: boolean }>`
       with profile_lock as materialized (
         select user_id, credits from profiles where user_id = ${context.userId} for update
+      ), order_lock as materialized (
+        select id from orders
+        where id = ${data.orderId} and store_id = ${data.storeId} and status = 'picked'
+        for update
       ), outing as (
-        insert into outings (user_id, store_id, destination, notes, credits_used, request_key)
-        select user_id, ${data.storeId}, ${data.destination}, ${data.notes}, ${data.cost}, ${data.requestKey}
-        from profile_lock
-        where credits >= ${data.cost}
-          and exists (select 1 from stores where id = ${data.storeId})
-        on conflict (user_id, request_key) do nothing
-        returning id, user_id
+        insert into outings (user_id, store_id, order_id, destination, notes, credits_used, request_key)
+        select profile_lock.user_id, ${data.storeId}, order_lock.id, ${data.destination}, ${data.notes}, ${data.cost}, ${data.requestKey}
+        from profile_lock cross join order_lock
+        where profile_lock.credits >= ${data.cost}
+        on conflict do nothing
+        returning id, user_id, order_id
       ), charged as (
         update profiles set credits = credits - ${data.cost}
         where user_id = ${context.userId} and exists (select 1 from outing)
         returning user_id, credits
+      ), completed as (
+        update orders set status = 'exited'
+        where id in (select order_id from outing)
+        returning id
       ), ledger as (
         insert into credit_transactions (user_id, amount, transaction_type, reason, reference_type, reference_id, actor_user_id)
         select user_id, -${data.cost}, 'spend', 'Salida registrada', 'outing', id::text, user_id
         from outing returning id
       ), existing as (
-        select id from outings where user_id = ${context.userId} and request_key = ${data.requestKey} limit 1
+        select id from outings
+        where user_id = ${context.userId}
+          and (request_key = ${data.requestKey} or order_id = ${data.orderId})
+        order by id desc limit 1
       )
       select coalesce(outing.id, existing.id) as id,
         coalesce(charged.credits, profiles.credits) as credits,
@@ -535,13 +546,21 @@ export const createOuting = createServerFn({ method: "POST" })
       where profiles.user_id = ${context.userId}
         and (outing.id is not null or existing.id is not null)
     `;
-    if (!rows[0]) {
-      const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
-      if (!profile[0]) throw new Error("No se encontró tu perfil");
-      if (Number(profile[0].credits) < data.cost) throw new Error("No tienes créditos suficientes");
-      throw new Error("No se pudo registrar la salida. Verifica la tienda seleccionada.");
+    if (rows[0]) {
+      return { id: Number(rows[0].id), credits: Number(rows[0].credits), deduplicated: rows[0].was_duplicate };
     }
-    return { id: Number(rows[0].id), credits: Number(rows[0].credits), deduplicated: rows[0].was_duplicate };
+    const prior = await sql<{ id: number; credits: number }>`
+      select o.id, p.credits from outings o
+      join profiles p on p.user_id = o.user_id
+      where o.user_id = ${context.userId}
+        and (o.request_key = ${data.requestKey} or o.order_id = ${data.orderId})
+      order by o.id desc limit 1
+    `;
+    if (prior[0]) return { id: Number(prior[0].id), credits: Number(prior[0].credits), deduplicated: true };
+    const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
+    if (!profile[0]) throw new Error("No se encontró tu perfil");
+    if (Number(profile[0].credits) < data.cost) throw new Error("No tienes créditos suficientes");
+    throw new Error("No se pudo registrar la salida. Actualiza la pantalla e inténtalo de nuevo.");
   });
 
 export const listOutings = createServerFn({ method: "GET" })
