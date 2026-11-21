@@ -157,15 +157,17 @@ export const getOrderForStore = createServerFn({ method: "GET" })
   });
 
 export const updateStorePresentation = createServerFn({ method: "POST" })
-  .validator((input: { storeId: number; headline: string; statusMessage: string; qrVisible: boolean }) => {
+  .validator((input: { storeId: number; headline: string; statusMessage: string; qrVisible: boolean; photoDataUrl?: string }) => {
     const storeId = Math.trunc(Number(input?.storeId));
     const headline = String(input?.headline ?? "").trim().slice(0, 80);
     const statusMessage = String(input?.statusMessage ?? "").trim().slice(0, 180);
     const qrVisible = input?.qrVisible === true;
-    if (!Number.isInteger(storeId) || storeId <= 0 || !headline || !statusMessage) {
+    const photoDataUrl = typeof input?.photoDataUrl === "string" ? input.photoDataUrl : undefined;
+    const validImage = !photoDataUrl || (["data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,"].some((prefix) => photoDataUrl.startsWith(prefix)) && photoDataUrl.length <= 2_800_000);
+    if (!Number.isInteger(storeId) || storeId <= 0 || !headline || !statusMessage || !validImage) {
       throw new Error("Completa los textos antes de guardar");
     }
-    return { storeId, headline, statusMessage, qrVisible };
+    return { storeId, headline, statusMessage, qrVisible, photoDataUrl };
   })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
@@ -181,7 +183,7 @@ export const updateStorePresentation = createServerFn({ method: "POST" })
       returning id
     `;
     if (!rows[0]) throw new Error("No se encontró la tienda");
-    return { headline: data.headline, statusMessage: data.statusMessage, qrVisible: data.qrVisible };
+    return { headline: data.headline, statusMessage: data.statusMessage, qrVisible: data.qrVisible, photoUrl: data.photoDataUrl };
   });
 
 export const updateStorePhoto = createServerFn({ method: "POST" })
