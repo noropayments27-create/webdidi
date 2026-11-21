@@ -4,7 +4,7 @@ import {
   ThumbsDown, ThumbsUp, TriangleAlert, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createOuting, rateStore, setOrderStatus, updateStorePhoto, updateStorePresentation, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
+import { createOuting, rateStore, setOrderStatus, updateStorePresentation, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
 import { formatCop, telHref } from "@/lib/format";
 
 type Sheet = "details" | "help" | "qr" | "photo" | null;
@@ -93,6 +93,7 @@ export function PickupScreen({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoDraft, setPhotoDraft] = useState<string | null>(null);
   const [exitDone, setExitDone] = useState(false);
   const [editing, setEditing] = useState(false);
   const [savingPresentation, setSavingPresentation] = useState(false);
@@ -126,6 +127,7 @@ export function PickupScreen({
 
   async function toggleEditor() {
     if (!editing) {
+      setPhotoDraft(null);
       setHeadlineDraft(order.headline);
       setStatusDraft(order.statusMessage);
       setQrVisible(order.qrVisible);
@@ -186,7 +188,7 @@ export function PickupScreen({
 
   return <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-card sm:shadow-xl">
     <div className="relative h-[23dvh] min-h-[150px] max-h-[250px] shrink-0">
-      {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
+      {(photoDraft || order.photoUrl) ? <img src={photoDraft || order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
       <button type="button" aria-label={editing ? "Cambiar fotografía de la tienda" : "Ver fotografía de la tienda"} onClick={() => editing ? photoInput.current?.click() : setSheet("photo")} className="absolute inset-0 z-[1] w-full" />
       {editing && <span className="pointer-events-none absolute right-3 bottom-6 z-[2] inline-flex items-center gap-1 rounded-full bg-ink/80 px-3 py-2 text-xs font-bold text-white"><ImagePlus className="size-4" /> Toca para cambiar la foto</span>}
       <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute z-10 top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
@@ -226,7 +228,7 @@ export function PickupScreen({
       </section>
 
       <div className="mt-auto flex shrink-0 items-center gap-3 pt-3 pb-3 max-[720px]:pt-2 max-[720px]:pb-2">
-        <button type="button" aria-label={editing ? "Guardar cambios de la tienda" : "Editar pantalla de la tienda"} disabled={savingPresentation} onClick={() => void toggleEditor()} className="grid size-12 shrink-0 place-items-center disabled:opacity-50">{editing ? <Check className="size-7" strokeWidth={2.5} /> : <SlidersHorizontal className="size-7" strokeWidth={2.1} />}</button>
+        <button type="button" aria-label={editing ? "Guardar cambios de la tienda" : "Editar pantalla de la tienda"} disabled={savingPresentation || photoBusy} onClick={() => void toggleEditor()} className="grid size-12 shrink-0 place-items-center disabled:opacity-50">{editing ? <Check className="size-7" strokeWidth={2.5} /> : <SlidersHorizontal className="size-7" strokeWidth={2.1} />}</button>
         <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => void changePhoto(event.target.files?.[0])} />
         <ExitSlider disabled={!canExit || photoBusy} loading={busy} onComplete={completeExit} />
       </div>
