@@ -4,7 +4,7 @@ import {
   ThumbsDown, ThumbsUp, TriangleAlert, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createOuting, rateStore, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
+import { createOuting, rateStore, setOrderStatus, updateStorePhoto, type ActiveOrder, type ProfileRow } from "@/lib/delivery.functions";
 import { formatCop, telHref } from "@/lib/format";
 
 type Sheet = "details" | "help" | "qr" | "photo" | null;
@@ -82,17 +82,19 @@ function ExitSlider({ disabled, loading, onComplete }: { disabled: boolean; load
 }
 
 export function PickupScreen({
-  order, onOrder, profile, onCredits,
+  order, onOrder, profile, onCredits, onBack,
 }: {
   order: ActiveOrder;
   onOrder: (order: ActiveOrder) => void;
   profile: ProfileRow | null;
   onCredits: (credits: number) => void;
+  onBack: () => void;
 }) {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
+  const requestKey = useRef<string | null>(null);
   const address = [order.address, order.city].filter(Boolean).join(", ");
   const phone = telHref(order.phone);
   const canExit = Boolean(profile && profile.credits >= 1 && order.status === "ready");
@@ -100,9 +102,9 @@ export function PickupScreen({
   async function completeExit() {
     if (busy || !canExit) return;
     setBusy(true);
-    const requestKey = `web-${order.id}-${crypto.randomUUID()}`;
+    requestKey.current ??= `web-${order.id}-${crypto.randomUUID()}`;
     try {
-      const result = await createOuting({ data: { storeId: order.storeId, requestKey } });
+      const result = await createOuting({ data: { storeId: order.storeId, requestKey: requestKey.current } });
       onCredits(result.credits);
       toast.success("Salida registrada. Se descontó 1 crédito.");
     } catch (error) {
@@ -150,7 +152,7 @@ export function PickupScreen({
   return <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-card sm:shadow-xl">
     <div className="relative h-[27dvh] min-h-[180px] max-h-[270px] shrink-0">
       {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
-      <button type="button" aria-label="Volver a tiendas" onClick={() => window.history.back()} className="absolute top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
+      <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
       <button type="button" onClick={() => setSheet("photo")} className="absolute right-3 bottom-6 inline-flex items-center gap-1 rounded-full bg-ink/80 py-1.5 pr-2 pl-3 text-sm font-semibold text-primary-fg">1/1 <ChevronRight className="size-4" /></button>
     </div>
 
@@ -171,7 +173,7 @@ export function PickupScreen({
 
       <section className="mt-3 shrink-0 rounded-3xl border border-line px-4 pt-4 pb-3">
         <h2 className="text-[26px] font-extrabold tracking-tight">{order.headline}</h2>
-        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { onOrder({ ...order, status: "picked", statusMessage: "Ya tienes el pedido. Llévalo con cuidado." }); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">Tengo el pedido</button>
+        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then(onOrder).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">Tengo el pedido</button>
         <button type="button" onClick={() => setSheet("details")} className="mt-2 w-full py-1 text-center text-sm font-medium text-muted">Detalles del pedido ›</button>
       </section>
 
