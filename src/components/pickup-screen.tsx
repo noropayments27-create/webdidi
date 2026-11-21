@@ -105,7 +105,7 @@ export function PickupScreen({
     setBusy(true);
     requestKey.current ??= `web-${order.id}-${crypto.randomUUID()}`;
     try {
-      const result = await createOuting({ data: { storeId: order.storeId, requestKey: requestKey.current } });
+      const result = await createOuting({ data: { storeId: order.storeId, orderId: order.id, requestKey: requestKey.current } });
       onCredits(result.credits);
       requestKey.current = null;
       setExitDone(true);
