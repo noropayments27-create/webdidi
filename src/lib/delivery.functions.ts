@@ -515,10 +515,11 @@ export const createOuting = createServerFn({ method: "POST" })
         select id from outings where user_id = ${context.userId} and request_key = ${data.requestKey} limit 1
       )
       select coalesce(outing.id, existing.id) as id,
-        profiles.credits,
+        coalesce(charged.credits, profiles.credits) as credits,
         (outing.id is null) as was_duplicate
       from profiles
       left join outing on true
+      left join charged on true
       left join existing on outing.id is null
       where profiles.user_id = ${context.userId}
         and (outing.id is not null or existing.id is not null)
