@@ -49,7 +49,7 @@ function ExitSlider({ disabled, loading, onComplete }: { disabled: boolean; load
   const startX = useRef(0);
   const startOffset = useRef(0);
   const track = useRef<HTMLDivElement>(null);
-  const knob = 62;
+  const knob = 48;
   const max = () => Math.max(0, (track.current?.clientWidth ?? 0) - knob - 16);
   const finish = async () => {
     const threshold = max() * 0.42;
@@ -75,7 +75,7 @@ function ExitSlider({ disabled, loading, onComplete }: { disabled: boolean; load
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
       {loading ? <span className="text-sm font-bold text-white">Procesando salida…</span> : <span className={`flex items-center gap-2 text-lg font-extrabold transition-opacity duration-150 ${disabled ? "text-muted/50" : "text-primary-fg"}`} style={{ opacity: Math.max(0, 1 - offset / Math.max(1, max() * 0.42)) }}> <ChevronsRight className="size-6" /> Salir </span>}
     </div>
-    {!loading && <button type="button" aria-label="Deslizar para salir" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => void finish()} onPointerCancel={() => { setOffset(0); setDragging(false); }} className={`absolute left-2 top-1 grid size-[46px] touch-none place-items-center rounded-2xl shadow-sm transition-transform ${disabled ? "bg-paper text-muted/40" : "bg-white text-primary"}`} style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 180ms ease-out" }}>
+    {!loading && <button type="button" aria-label="Deslizar para salir" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={() => void finish()} onPointerCancel={() => { setOffset(0); setDragging(false); }} className={`absolute left-2 top-1 grid size-12 touch-none place-items-center rounded-2xl shadow-sm transition-transform ${disabled ? "bg-paper text-muted/40" : "bg-white text-primary"}`} style={{ transform: `translateX(${offset}px)`, transition: dragging ? "none" : "transform 180ms ease-out" }}>
       <ChevronsRight className="size-6" strokeWidth={2.5} />
     </button>}
   </div>;
@@ -92,12 +92,12 @@ export function PickupScreen({
 }) {
   const [sheet, setSheet] = useState<Sheet>(null);
   const [busy, setBusy] = useState(false);
-  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);\n  const [exitDone, setExitDone] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const requestKey = useRef<string | null>(null);
   const address = [order.address, order.city].filter(Boolean).join(", ");
   const phone = telHref(order.phone);
-  const canExit = Boolean(profile && profile.credits >= 1 && order.status === "ready");
+  const canExit = Boolean(!exitDone && profile && profile.credits >= 1 && order.status === "picked");
 
   async function completeExit() {
     if (busy || !canExit) return;
@@ -150,7 +150,7 @@ export function PickupScreen({
   }
 
   return <div className="mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-card sm:shadow-xl">
-    <div className="relative h-[27dvh] min-h-[180px] max-h-[270px] shrink-0">
+    <div className="relative h-[23dvh] min-h-[150px] max-h-[250px] shrink-0">
       {order.photoUrl ? <img src={order.photoUrl} alt={`Fachada de ${order.storeName}`} className="block h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
       <button type="button" aria-label="Volver a tiendas" onClick={onBack} className="absolute top-3 left-3 grid size-14 place-items-center rounded-2xl bg-card shadow-md"><ChevronDown className="size-7" strokeWidth={2.25} /></button>
       <button type="button" onClick={() => setSheet("photo")} className="absolute right-3 bottom-6 inline-flex items-center gap-1 rounded-full bg-ink/80 py-1.5 pr-2 pl-3 text-sm font-semibold text-primary-fg">1/1 <ChevronRight className="size-4" /></button>
@@ -173,7 +173,7 @@ export function PickupScreen({
 
       <section className="mt-3 shrink-0 rounded-3xl border border-line px-4 pt-4 pb-3">
         <h2 className="text-[26px] font-extrabold tracking-tight">{order.headline}</h2>
-        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then(onOrder).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">Tengo el pedido</button>
+        <button type="button" disabled={busy || order.status !== "ready"} onClick={() => { void setOrderStatus({ data: { id: order.id, status: "picked" } }).then(onOrder).catch((error) => toast.error(error instanceof Error ? error.message : "No se pudo actualizar el pedido")); }} className="mt-4 h-14 w-full rounded-full bg-primary text-lg font-bold text-primary-fg transition active:brightness-95 disabled:opacity-60">{order.status === "picked" || order.status === "exited" ? "Ya tienes el pedido" : "Tengo el pedido"}</button>
         <button type="button" onClick={() => setSheet("details")} className="mt-2 w-full py-1 text-center text-sm font-medium text-muted">Detalles del pedido ›</button>
       </section>
 
