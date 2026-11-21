@@ -178,7 +178,8 @@ export const updateStorePresentation = createServerFn({ method: "POST" })
       update stores
       set pickup_headline = ${data.headline},
           pickup_status_message = ${data.statusMessage},
-          show_qr_code = ${data.qrVisible}
+          show_qr_code = ${data.qrVisible},
+          photo_url = coalesce(${data.photoDataUrl ?? null}, photo_url)
       where id = ${data.storeId}
       returning id
     `;
