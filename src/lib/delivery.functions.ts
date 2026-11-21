@@ -140,8 +140,11 @@ export const getOrderForStore = createServerFn({ method: "GET" })
     if (!Number.isInteger(storeId) || storeId <= 0) throw new Error("Tienda inválida");
     return storeId;
   })
-  .handler(async ({ data: storeId }) => {
+  .middleware([authMiddleware])
+  .handler(async ({ context, data: storeId }) => {
     const sql = await getSql();
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
     const rows = await sql.query<OrderSqlRow>(
       `${ORDER_SELECT} where s.id = $1 order by case o.status when 'ready' then 0 when 'picked' then 1 when 'delivered' then 2 else 3 end, o.id desc limit 1`,
       [storeId],
