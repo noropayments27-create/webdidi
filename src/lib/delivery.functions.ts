@@ -134,38 +134,96 @@ export const getActiveOrder = createServerFn({ method: "GET" }).handler(async ()
   return readActive();
 });
 
+export const getOrderForStore = createServerFn({ method: "GET" })
+  .validator((value: number) => {
+    const storeId = Math.trunc(Number(value));
+    if (!Number.isInteger(storeId) || storeId <= 0) throw new Error("Tienda inválida");
+    return storeId;
+  })
+  .middleware([authMiddleware])
+  .handler(async ({ context, data: storeId }) => {
+    const sql = await getSql();
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const rows = await sql.query<OrderSqlRow>(
+      `${ORDER_SELECT} where s.id = $1 order by case o.status when 'ready' then 0 when 'picked' then 1 when 'delivered' then 2 else 3 end, o.id desc limit 1`,
+      [storeId],
+    );
+    return rows[0] ? mapOrder(rows[0]) : null;
+  });
+
+export const updateStorePhoto = createServerFn({ method: "POST" })
+  .validator((input: { storeId: number; photoDataUrl: string }) => {
+    const storeId = Math.trunc(Number(input?.storeId));
+    const photoDataUrl = String(input?.photoDataUrl ?? "");
+    const validImage = ["data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,"].some((prefix) => photoDataUrl.startsWith(prefix));
+    if (!Number.isInteger(storeId) || storeId <= 0 || !validImage || photoDataUrl.length > 2_800_000) {
+      throw new Error("La imagen debe ser JPG, PNG o WebP y pesar menos de 2 MB");
+    }
+    return { storeId, photoDataUrl };
+  })
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const rows = await sql<{ id: number }>`
+      update stores set photo_url = ${data.photoDataUrl} where id = ${data.storeId} returning id
+    `;
+    if (!rows[0]) throw new Error("No se encontró la tienda");
+    return { photoUrl: data.photoDataUrl };
+  });
+
 const STATUSES = new Set(["ready", "picked", "delivered", "exited"]);
 
 export const setOrderStatus = createServerFn({ method: "POST" })
   .validator((input: { id: number; status: string }) => {
-    const id = Number(input?.id);
+    const id = Math.trunc(Number(input?.id));
     const status = String(input?.status ?? "");
-    if (!Number.isFinite(id) || !STATUSES.has(status)) {
+    if (!Number.isInteger(id) || id <= 0 || !STATUSES.has(status)) {
       throw new Error("No se pudo actualizar el pedido");
     }
     return { id, status };
   })
-  .handler(async ({ data }) => {
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await sql`update orders set status = ${data.status} where id = ${data.id}`;
-    const order = await readActive();
-    if (!order) throw new Error("Pedido no encontrado");
-    return order;
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const allowed = data.status === "picked" ? "ready"
+      : data.status === "delivered" ? "picked"
+      : data.status === "ready" ? "exited" : null;
+    if (!allowed) throw new Error("Transición de pedido no permitida");
+    const changed = await sql<{ id: number }>`
+      update orders set status = ${data.status}
+      where id = ${data.id} and status = ${allowed}
+      returning id
+    `;
+    if (!changed[0]) throw new Error("El pedido ya cambió de estado. Actualiza la pantalla.");
+    const rows = await sql.query<OrderSqlRow>(`${ORDER_SELECT} where o.id = $1 limit 1`, [data.id]);
+    if (!rows[0]) throw new Error("Pedido no encontrado");
+    return mapOrder(rows[0]);
   });
 
 export const rateStore = createServerFn({ method: "POST" })
   .validator((input: { id: number; rating: string }) => {
-    const id = Number(input?.id);
+    const id = Math.trunc(Number(input?.id));
     const rating = input?.rating === "no" ? "no" : "yes";
-    if (!Number.isFinite(id)) throw new Error("Pedido inválido");
+    if (!Number.isInteger(id) || id <= 0) throw new Error("Pedido inválido");
     return { id, rating };
   })
-  .handler(async ({ data }) => {
+  .middleware([authMiddleware])
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
-    await sql`update orders set rating = ${data.rating} where id = ${data.id}`;
-    const order = await readActive();
-    if (!order) throw new Error("Pedido no encontrado");
-    return order;
+    const profile = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
+    if (!profile[0] || profile[0].is_blocked) throw new Error("Tu cuenta no está habilitada");
+    const changed = await sql<{ id: number }>`
+      update orders set rating = ${data.rating} where id = ${data.id} returning id
+    `;
+    if (!changed[0]) throw new Error("Pedido no encontrado");
+    const rows = await sql.query<OrderSqlRow>(`${ORDER_SELECT} where o.id = $1 limit 1`, [data.id]);
+    if (!rows[0]) throw new Error("Pedido no encontrado");
+    return mapOrder(rows[0]);
   });
 
 export const ensureProfile = createServerFn({ method: "POST" })
@@ -438,51 +496,80 @@ export type OutingRow = {
 };
 
 export const createOuting = createServerFn({ method: "POST" })
-  .validator((input: { storeId: number; destination: string; notes?: string; doublet?: boolean }) => {
+  .validator((input: { storeId: number; orderId: number; destination?: string; notes?: string; doublet?: boolean; requestKey: string }) => {
     const storeId = Math.trunc(Number(input?.storeId));
-    const destination = String(input?.destination ?? "").trim().slice(0, 180);
+    const orderId = Math.trunc(Number(input?.orderId));
+    const destination = String(input?.destination ?? "Entrega asignada").trim().slice(0, 180);
     const notes = String(input?.notes ?? "").trim().slice(0, 500);
     const doublet = input?.doublet === true;
-    if (!Number.isInteger(storeId) || storeId <= 0 || destination.length < 3) {
-      throw new Error("Selecciona una tienda e indica el destino");
+    const requestKey = String(input?.requestKey ?? "").trim().slice(0, 80);
+    if (!Number.isInteger(storeId) || storeId <= 0 || !Number.isInteger(orderId) || orderId <= 0 || requestKey.length < 12) {
+      throw new Error("No se pudo validar la salida");
     }
-    return { storeId, destination, notes, doublet, cost: doublet ? 2 : 1 };
+    return { storeId, orderId, destination, notes, doublet, requestKey, cost: doublet ? 2 : 1 };
   })
   .middleware([authMiddleware])
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const active = await sql<{ is_blocked: boolean }>`select is_blocked from profiles where user_id = ${context.userId}`;
     if (!active[0] || active[0].is_blocked) throw new Error("Tu cuenta está bloqueada o no está habilitada.");
-    const rows = await sql<{ id: number; credits: number }>`
-      with store_ok as (
-        select id from stores where id = ${data.storeId}
+    const rows = await sql<{ id: number; credits: number; was_duplicate: boolean }>`
+      with profile_lock as materialized (
+        select user_id, credits from profiles where user_id = ${context.userId} for update
+      ), order_lock as materialized (
+        select id from orders
+        where id = ${data.orderId} and store_id = ${data.storeId} and status = 'picked'
+        for update
+      ), outing as (
+        insert into outings (user_id, store_id, order_id, destination, notes, credits_used, request_key)
+        select profile_lock.user_id, ${data.storeId}, order_lock.id, ${data.destination}, ${data.notes}, ${data.cost}, ${data.requestKey}
+        from profile_lock cross join order_lock
+        where profile_lock.credits >= ${data.cost}
+        on conflict do nothing
+        returning id, user_id, order_id
       ), charged as (
         update profiles set credits = credits - ${data.cost}
-        where user_id = ${context.userId} and credits >= ${data.cost}
-          and exists (select 1 from store_ok)
+        where user_id = ${context.userId} and exists (select 1 from outing)
         returning user_id, credits
-      ), outing as (
-        insert into outings (user_id, store_id, destination, notes, credits_used)
-        select user_id, ${data.storeId}, ${data.destination}, ${data.notes}, ${data.cost}
-        from charged
-        returning id, user_id
+      ), completed as (
+        update orders set status = 'exited'
+        where id in (select order_id from outing)
+        returning id
       ), ledger as (
         insert into credit_transactions (user_id, amount, transaction_type, reason, reference_type, reference_id, actor_user_id)
         select user_id, -${data.cost}, 'spend', 'Salida registrada', 'outing', id::text, user_id
-        from outing
-        returning id
+        from outing returning id
+      ), existing as (
+        select id from outings
+        where user_id = ${context.userId}
+          and (request_key = ${data.requestKey} or order_id = ${data.orderId})
+        order by id desc limit 1
       )
-      select outing.id, charged.credits
-      from outing join charged on charged.user_id = outing.user_id
-      cross join ledger
+      select coalesce(outing.id, existing.id) as id,
+        coalesce(charged.credits, profiles.credits) as credits,
+        (outing.id is null) as was_duplicate
+      from profiles
+      left join outing on true
+      left join charged on true
+      left join existing on outing.id is null
+      where profiles.user_id = ${context.userId}
+        and (outing.id is not null or existing.id is not null)
     `;
-    if (!rows[0]) {
-      const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
-      if (!profile[0]) throw new Error("No se encontró tu perfil");
-      if (Number(profile[0].credits) < data.cost) throw new Error("No tienes créditos suficientes");
-      throw new Error("No se pudo registrar la salida. Verifica la tienda seleccionada.");
+    if (rows[0]) {
+      return { id: Number(rows[0].id), credits: Number(rows[0].credits), deduplicated: rows[0].was_duplicate };
     }
-    return { id: Number(rows[0].id), credits: Number(rows[0].credits) };
+    const prior = await sql<{ id: number; credits: number }>`
+      select o.id, p.credits from outings o
+      join profiles p on p.user_id = o.user_id
+      where o.user_id = ${context.userId}
+        and (o.request_key = ${data.requestKey} or o.order_id = ${data.orderId})
+      order by o.id desc limit 1
+    `;
+    if (prior[0]) return { id: Number(prior[0].id), credits: Number(prior[0].credits), deduplicated: true };
+    const profile = await sql<{ credits: number }>`select credits from profiles where user_id = ${context.userId}`;
+    if (!profile[0]) throw new Error("No se encontró tu perfil");
+    if (Number(profile[0].credits) < data.cost) throw new Error("No tienes créditos suficientes");
+    throw new Error("No se pudo registrar la salida. Actualiza la pantalla e inténtalo de nuevo.");
   });
 
 export const listOutings = createServerFn({ method: "GET" })
